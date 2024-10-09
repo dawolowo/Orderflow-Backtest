@@ -10,7 +10,6 @@ BackTest = a class that contains 'properties' to simulate live market and test a
 #include "candlestick.h"
 #include "chart.h"
 #include "order.h"
-/*Indicates the direction of a trade*/
 
 /*An object that backtest a strategy on a given data
 @tparam candles vector containing the candlesticks to be backtested
@@ -49,7 +48,12 @@ public:
     std::vector<CandleStick> &candles() {return _candles;}
     //@return chart
     Chart &chart() {return _chart;}
-
+    //@return Returns of the strategy @note Not in percentage
+    double returns(){return _returns;}
+    //@return The accuracy of the strategy @note Not in percentage
+    double winrate(){return ((double) (_short_wins+_long_wins))/_n_trades;}
+    //@return The maximum drawdown @note Not in percentage
+    double max_dd(){return _max_dd;}
     /*Adds an order to the backtest engine*/
     void add_order(Order &order){
         _orders.push_back(order);
@@ -69,7 +73,7 @@ public:
         << "\nlongs winrate : " << (_longs > 0? ((double) _long_wins)/ _longs : 0) << "\tshorts winrate : " 
         << (_shorts > 0 ? ((double) _short_wins)/ _shorts : 0) 
         << "\nsignal rate : " << (_candles.size() > 0 ? ((double)_n_trades)/ _candles.size() : 0) << "\treturns : " 
-        << (_equity-_initial__equity)/_initial__equity << "\n";
+        << _returns << "\n";
         std::cout.unsetf(std::ios::scientific | std::ios::fixed);
     }
     /*Prints the time, direction and the trades success to the console*/
@@ -109,11 +113,13 @@ private:
     /* total reward to risk ratio, negative rr means not profitable. you can multiply it by your risk per trade in dollars to get
      the profit/loss over the backtest.
     */
-    double _rr = 0, _max_dd = 0; 
+    double _rr = 0; 
+    double _max_dd = 0; 
     Quantity _equity = 10'000;
     Quantity _max__equity = _equity, _initial__equity = _equity;
     /*Longest duration of a drawdown.@note It is unrelated to max drawdown*/
     long long _max_dd_duration = 0, _dd_duration = 0;
+    double _returns = 0;
     
     /*Calculates useful information about the backtest*/
     void _run_analysis(){
@@ -139,6 +145,7 @@ private:
                 ++_n_trades;
             }
         }
+        _returns = (_equity-_initial__equity)/_initial__equity;
     }
     /*Manage trades. Responsible for checking if trades is successful or not*/
     void _manage_trades(){
@@ -220,6 +227,7 @@ private:
         _rr = 0, _max_dd = 0; 
         _equity = 10'000;
         _max__equity = _initial__equity = _equity;
+        _returns = 0;
     }
 };
 
