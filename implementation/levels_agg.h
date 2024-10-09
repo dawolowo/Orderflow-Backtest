@@ -59,7 +59,7 @@ namespace levels{
         time_t timestamp, prev_time ;
         std::map<Price, Level, std::greater<Price>> footprint;
         std::fstream file;
-        if (store) file.open(store_path);
+        if (store) file.open(store_path, std::ios::out);
         while (true){
             std::unordered_map<const char *, std::string> row;
             data::stream_file(column_names, row);
@@ -94,7 +94,7 @@ namespace levels{
             prev_time = curr_time;
             no_of_lines++;
         }
-        
+        file.close();
         data::close_file();
         return no_of_lines;
     }
