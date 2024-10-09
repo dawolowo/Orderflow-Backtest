@@ -9,6 +9,7 @@ Trade = a structure that contains elements of a real life executed order
 
 #include "defs.h"
 
+/*Indicates the direction of a trade/ order*/
 enum class Direction{
     buy,
     sell
