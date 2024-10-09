@@ -21,7 +21,6 @@ live testing unless very few trades were taken.
 */
 class BackTest{
 public:
-    Quantity equity = 10'000;
     double risk = 1; //risk per trade in percentage. @note Should not be negative
 
     BackTest(std::vector<CandleStick> &candles, void (*strategy) (BackTest &)){
@@ -70,7 +69,7 @@ public:
         << "\nlongs winrate : " << (_longs > 0? ((double) _long_wins)/ _longs : 0) << "\tshorts winrate : " 
         << (_shorts > 0 ? ((double) _short_wins)/ _shorts : 0) 
         << "\nsignal rate : " << (_candles.size() > 0 ? ((double)_n_trades)/ _candles.size() : 0) << "\treturns : " 
-        << (equity-_initial_equity)/_initial_equity << "\n";
+        << (_equity-_initial__equity)/_initial__equity << "\n";
         std::cout.unsetf(std::ios::scientific | std::ios::fixed);
     }
     /*Prints the time, direction and the trades success to the console*/
@@ -111,7 +110,8 @@ private:
      the profit/loss over the backtest.
     */
     double _rr = 0, _max_dd = 0; 
-    Quantity _max_equity = equity, _initial_equity = equity;
+    Quantity _equity = 10'000;
+    Quantity _max__equity = _equity, _initial__equity = _equity;
     /*Longest duration of a drawdown.@note It is unrelated to max drawdown*/
     long long _max_dd_duration = 0, _dd_duration = 0;
     
@@ -191,19 +191,19 @@ private:
             od.counter++;
         }
     }
-    //Update equity 
+    //Update _equity 
     void _update_balance(Trade &tr){
         double reward = tr.rr * risk;
-        equity += equity*reward/100;
+        _equity += _equity*reward/100;
     }
     //Update drawdowns
     void _update_dd(){
-        if (equity >= _max_equity){
-            _max_equity = equity;
+        if (_equity >= _max__equity){
+            _max__equity = _equity;
             _dd_duration = 0;
         }
         else {
-            double dd = (equity-_max_equity)/equity;
+            double dd = (_equity-_max__equity)/_equity;
             if (++_dd_duration > _max_dd_duration)_max_dd_duration = _dd_duration;
             if (dd < _max_dd) _max_dd = dd;
         }
@@ -218,7 +218,8 @@ private:
         _long_wins = 0, _short_wins = 0, _longs = 0, _shorts = 0, _n_trades = 0;
         _max_loss_in_a_row = 0, _max_win_in_a_row = 0;
         _rr = 0, _max_dd = 0; 
-        _max_equity = _initial_equity = equity;
+        _equity = 10'000;
+        _max__equity = _initial__equity = _equity;
     }
 };
 
