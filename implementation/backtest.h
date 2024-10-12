@@ -20,7 +20,7 @@ live testing unless very few trades were taken.
 */
 class BackTest{
 public:
-    double risk = 1; //risk per trade in percentage. @note Should not be negative
+    double risk = 1; //Risk per trade in percentage. @note Should not be negative
 
     BackTest(std::vector<CandleStick> &candles, void (*strategy) (BackTest &)){
         _candles = candles;
@@ -42,7 +42,7 @@ public:
         }
         _run_analysis();
     }
-    // @return index
+    // @return Index of the current candle during backtest
     size_t index(){return _index;}
     //@return candles in backtest engine
     std::vector<CandleStick> &candles() {return _candles;}
@@ -56,13 +56,12 @@ public:
     double max_dd(){return _max_dd;}
     /*Adds an order to the backtest engine*/
     void add_order(Order &order){
-        _orders.push_back(order);
+        if (_check(order)) _orders.push_back(order);
     }
     /*Adds an order to the backtest engine*/
     void add_order(Order &&order){
-        _orders.push_back(order);
+        add_order(order);
     }
-
     /*@brief Prints statistical information about the strategy backtested to the console.*/
     void print_stat(){
         std::cout << std::setprecision(4) << std::fixed;
@@ -116,7 +115,7 @@ private:
     double _rr = 0; 
     double _max_dd = 0; 
     Quantity _equity = 10'000;
-    Quantity _max__equity = _equity, _initial__equity = _equity;
+    Quantity _max_equity = _equity, _initial_equity = _equity;
     /*Longest duration of a drawdown.@note It is unrelated to max drawdown*/
     long long _max_dd_duration = 0, _dd_duration = 0;
     double _returns = 0;
@@ -145,7 +144,7 @@ private:
                 ++_n_trades;
             }
         }
-        _returns = (_equity-_initial__equity)/_initial__equity;
+        _returns = (_equity-_initial_equity)/_initial_equity;
     }
     /*Manage trades. Responsible for checking if trades is successful or not*/
     void _manage_trades(){
@@ -177,7 +176,7 @@ private:
     }
     /*Adds a trade to the backtest engine*/
     void _add_trade(Trade &&trade){ _trades.push_back(trade);}
-
+    // Fills an order
     void _fill(Order &od){
         _add_trade(Trade(od.entry, od.sl, od.tp, _candles[_index].time_stamp(), od.direction));
         od.filled = true;
@@ -205,15 +204,20 @@ private:
     }
     //Update drawdowns
     void _update_dd(){
-        if (_equity >= _max__equity){
-            _max__equity = _equity;
+        if (_equity >= _max_equity){
+            _max_equity = _equity;
             _dd_duration = 0;
         }
         else {
-            double dd = (_equity-_max__equity)/_equity;
+            double dd = (_equity-_max_equity)/_equity;
             if (++_dd_duration > _max_dd_duration)_max_dd_duration = _dd_duration;
             if (dd < _max_dd) _max_dd = dd;
         }
+    }
+    //Checks if an order is proper
+    bool _check(Order &order){
+        return (order.entry > order.sl && order.tp > order.entry && order.direction == Direction::buy)
+        ||  (order.entry < order.sl && order.tp < order.entry && order.direction == Direction::sell);
     }
     /* Resets all private variables.
     @note Does not reset public variables
@@ -226,7 +230,7 @@ private:
         _max_loss_in_a_row = 0, _max_win_in_a_row = 0;
         _rr = 0, _max_dd = 0; 
         _equity = 10'000;
-        _max__equity = _initial__equity = _equity;
+        _max_equity = _initial_equity = _equity;
         _returns = 0;
     }
 };
