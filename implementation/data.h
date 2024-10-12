@@ -18,54 +18,22 @@ namespace data{
     void close_file(){ 
         file_in.close();
     }
-    /*seprates a csv line into the column components and stores it in row parameter(vector)
-    @tparam line string containing csv line
-    @tparam ncols number of columns to read 
-    @tparam row initially empty vector that will contain data as values
-    */
-    void separate(std::string &line, const size_t ncols, std::vector<std::string> &row){
-        int n = 0;
-        std::string temp = "";
-        for (int i = 0; i < line.size(); i++){
-            char &x = line[i];
-            if (x == ',' ){
-                row.push_back(temp);
-                temp = "";
-                n++;
-            }
-            else temp += x;
-            if (i == line.size()-1) row.push_back(temp);
-            if (n == ncols) break;
-        }
-    }
-    /* separates the csv line into columns and stores it in row parameter (map)
-    @tparam line string containing a csv line
-    @tparam cols vector containing the column names
-    @tparam row initially empty unordered map that will contain the columns as keys and data as values
-    */
-    void separate(std::string &line, const std::vector<const char *> &cols, std::unordered_map<const char *, std::string> &row){
-        int n = 0;
-        std::string temp = "";
-        for (int i = 0; i < line.size(); i++){
-            char &x = line[i];
-            if (x == ',' ){
-                row[cols[n]] = temp;
-                temp = "";
-                n++;
-            }
-            else temp += x;
-            if (i == line.size()-1) row[cols[n]] = temp;
-            if (n == cols.size()) break;
-        }
-    }
+
     /*streams a csv file and fills the row parameter with the content. Reads a single row.
     @tparam ncol number of columns to read
-    @tparam row vector that will be filled with the read row of the csv file
+    @tparam row vector that will be filled with the read row of the csv file. Empty vector should be passed
     */
-    void stream_file(const size_t &ncol, std::vector<std::string> &row){
-        std::string line;
-        file_in >> line;
-        separate(line, ncol, row);
+    void stream_file(const size_t ncol, std::vector<std::string> &row){
+        char x;
+        std::string temp;
+        while (file_in.get(x)){
+            if (x == '\n') break;
+            if (x == ',' && row.size() < ncol){
+                row.push_back(temp);
+                temp = "";
+            }
+            else temp += x;
+        }
     }
     /*streams a csv file and fills the row parameter with the content. Reads a single line.
     @tparam cols vector containing the column names
@@ -73,9 +41,15 @@ namespace data{
     and value contains data
     */
     void stream_file(const std::vector<const char *> &cols, std::unordered_map<const char *, std::string> &row){
-        std::string line;
-        file_in >> line;
-        separate(line, cols, row);
+        int n = 0;
+        char x;
+        while (file_in.get(x)){
+            if (x == '\n') break;
+            if (x == ',' ) n++;
+            else if (n < cols.size()){
+                row[cols[n]] += x;
+            }
+        }
     }
 }
 
