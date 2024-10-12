@@ -12,8 +12,8 @@ CandleStick = a replica object of a candlestick
 
 class CandleStick{
 public:
-    double imbalance_level = 3;
-    double percentage = 0.7;
+    double imbalance_level = 3; // minimum ratio between bid and ask to indicate imbalance
+    double percentage = 0.7; // Percentage of volume used to calculate the value area. @note Should be in ratio e.g 0.7 instead of 70%
     CandleStick() = default;
     CandleStick(Price open, Price high, Price low, Price close, time_t time, std::map<Price, Level, std::greater<Price>> &footprint) {
         _open = open;
@@ -37,6 +37,16 @@ public:
     Price cot() {
         if (!_is_set) _set_info();
         return _cot;
+    }
+    //@return Price with the highest ask volume
+    Price acot(){
+        if (!_is_set)_set_info();
+        return _acot;
+    }
+    //@return Price with the highest bid volume
+    Price bcot(){
+        if (!_is_set) _set_info();
+        return _bcot;
     }
     /*@return volume weighted price of the candlestick*/
     Price vwap() {
@@ -92,29 +102,35 @@ public:
     /*@return map containing the footprint*/
     const std::map<Price, Level, std::greater<Price>> &footprint() const {return _footprint;}
     /*Recalculates the value area using the percentage given.
-    @tparam percentage percentage of the value area*/
+    @tparam percentage percentage of the value area
+    @note percentage should be in ratio e.g 0.7 instead of 70%*/
     void set_va(double percentage){
         _value_area(percentage);
     }
     
-    /*Prints the footprint of the candle stick. '#' infront of bid ask represents imabalance*/
+    /*Prints the footprint of the candle stick. @note '#' infront of bid or ask represents imabalance*/
     void print_fp() const {
         for (auto &x : _footprint){
             if (x.second.buy_imbalance(imbalance_level)) 
-                std::cout << x.first << " -> b: # " << x.second.bids_ << "\ta: "<< x.second.asks_;
+                std::cout << x.first << " -> b: # " << x.second.bids << "\ta: "<< x.second.asks;
             else if (x.second.sell_imbalance(imbalance_level))
-                std::cout << x.first << " -> b: " << x.second.bids_ << "\ta: # "<< x.second.asks_;
+                std::cout << x.first << " -> b: " << x.second.bids << "\ta: # "<< x.second.asks;
             else
-                std::cout << x.first << " -> b: " << x.second.bids_ << "\ta: "<< x.second.asks_ ;
+                std::cout << x.first << " -> b: " << x.second.bids << "\ta: "<< x.second.asks ;
             std::cout << std::endl;
         }
     }
-    
+
     friend std::ostream &operator<<(std::ostream &out, CandleStick &obj){
         out << obj._open << " " << obj._high << " " << obj._low << " " << obj._close << " " << obj._time_stamp << " " << obj._footprint.size();
         for (auto &p : obj._footprint){
             out << " " << p.second;
         }
+        return out;
+    }
+
+    friend std::ostream &operator<<(std::ostream &out, CandleStick &&obj){
+        out << obj;
         return out;
     }
     
@@ -126,7 +142,7 @@ public:
         for (int i = 0; i < level_size; i++){
             Level temp;
             in >> temp;
-            obj._footprint[temp.price_] = temp;            
+            obj._footprint[temp.price] = temp;            
         }
         return in;
     }
@@ -134,20 +150,27 @@ public:
 private:
     Price _open, _high, _low, _close;
     time_t _time_stamp;
+
     Quantity _ask_vol = 0, _bid_vol = 0, _max_vol = 0;
     std::map<Price, Level, std::greater<Price>> _footprint;
     size_t _buy_trans = 0, _sell_trans = 0;
     Quantity _max_delta = std::numeric_limits<Quantity>::lowest(), _min_delta = std::numeric_limits<Quantity>::max();
+
     Price _cot; // COT = commitment of traders AKA POC price wtih the highest volume in the candlestick
     Price _vah = -1, _val = -1, _vwap = -1; // VAH = value area high. VAL = value area low
     size_t _buy_imb = 0, _sell_imb = 0; // number of buy and sell imbalance
+
+    Price _bcot; // Bids commitment of traders
+    Price _acot; // Asks commitment of traders
+    Quantity _max_ask = 0, _max_bid = 0;
     bool _is_set = false;
+
     /*Calculates and sets information such as max_delta, bid volume, vwap etc*/
     void _set_info(){
         double pv = 0; // pv = price * volume
         for (const auto &it : _footprint){
             _setter(it.second);
-            pv += it.first * (it.second.asks_+it.second.bids_);
+            pv += it.first * (it.second.asks+it.second.bids);
         }
         _is_set = true;
         _vwap = pv/volume();
@@ -156,26 +179,36 @@ private:
     /*helper function for _set_info()*/
     void _setter(const Level &temp){
         Quantity del, vol;
-        del = temp.bids_ - temp.asks_;
-        vol = temp.bids_ + temp.asks_;
+        del = temp.bids - temp.asks;
+        vol = temp.bids + temp.asks;
         if (vol > _max_vol){
             _max_vol = vol;
-            _cot = temp.price_;
+            _cot = temp.price;
+        }
+        if (temp.bids > _max_bid){
+            _max_bid = temp.bids;
+            _bcot = temp.price;
+        }
+        if (temp.asks > _max_ask){
+            _max_ask = temp.asks;
+            _acot = temp.price;
         }
         if (del > _max_delta) _max_delta = del;
         if (del < _min_delta) _min_delta = del;
-        _ask_vol += temp.asks_;
-        _bid_vol += temp.bids_;
+        _ask_vol += temp.asks;
+        _bid_vol += temp.bids;
         if (temp.buy_imbalance(imbalance_level)) _buy_imb++;
         if (temp.sell_imbalance(imbalance_level)) _sell_imb++;
     }
     
-    /*Finds the value area high and value area low of the footprint given percentage*/
+    /*Finds the value area high and value area low of the footprint given percentage
+    @tparam percentage The percentage of total volume the the VAH and VAL should enclose
+    */
     void _value_area(double perecentage){
         if (percentage > 1.0) percentage = 1.0;
         if (!_is_set) _set_info();
         const auto &it = _footprint.find(_cot);
-        Quantity vol = it->second.asks_ + it->second.bids_;
+        Quantity vol = it->second.asks + it->second.bids;
         const Quantity total_vol = volume();
         std::map<Price, Level, std::greater<Price>>::iterator up;
         std::map<Price, Level, std::greater<Price>>::iterator down;
@@ -196,8 +229,8 @@ private:
         while (vol < perecentage*total_vol){
             Quantity down_vol = 0, up_vol = 0;
             
-            if (!reached_bottom) down_vol = down->second.asks_ + down->second.bids_;
-            if (!reached_top) up_vol = up->second.bids_ + up->second.asks_;
+            if (!reached_bottom) down_vol = down->second.asks + down->second.bids;
+            if (!reached_top) up_vol = up->second.bids + up->second.asks;
 
             if (down_vol > up_vol){
                 vol += down_vol;
