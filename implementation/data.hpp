@@ -1,10 +1,11 @@
 /*
  This is file contains code necessary to read time and sales data specifically from binance. 
 */
-#ifndef DATA_H
-#define DATA_H
 
-#include "defs.h"
+#ifndef DATA_HPP
+#define DATA_HPP
+
+#include "defs.hpp"
 
 namespace data{
     std::fstream file_in;
