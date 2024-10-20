@@ -4,12 +4,12 @@ This file is contains necessary code to successfully backtest a strategy
 BackTest = a class that contains 'properties' to simulate live market and test a strategy
 */
 
-#ifndef BACKTEST_H
-#define BACKTEST_H
-#include "defs.h"
-#include "candlestick.h"
-#include "chart.h"
-#include "order.h"
+#ifndef BACKTEST_HPP
+#define BACKTEST_HPP
+#include "defs.hpp"
+#include "candlestick.hpp"
+#include "chart.hpp"
+#include "order.hpp"
 
 /*An object that backtest a strategy on a given data
 @tparam candles vector containing the candlesticks to be backtested
