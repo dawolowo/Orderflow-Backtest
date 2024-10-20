@@ -1,5 +1,5 @@
-#include "levels_agg.h"
-#include "chart.h"
+#include "levels_agg.hpp"
+#include "chart.hpp"
 
 using namespace std;
 
