@@ -1,5 +1,5 @@
-#ifndef DEFS_H
-#define DEFS_H
+#ifndef DEFS_HPP
+#define DEFS_HPP
 
 #include <unordered_map>
 #include <iostream>
