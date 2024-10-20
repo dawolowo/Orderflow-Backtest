@@ -4,10 +4,10 @@ Direction = an enum indicating direction of trade
 Trade = a structure that contains elements of a real life executed order
 */
 
-#ifndef ORDER_H
-#define ORDER_H
+#ifndef ORDER_HPP
+#define ORDER_HPP
 
-#include "defs.h"
+#include "defs.hpp"
 
 /*Indicates the direction of a trade/ order*/
 enum class Direction{
