@@ -2,9 +2,9 @@
 This file contains code that describes the market level.
 
 */ 
-#ifndef LEVEL_INFO_H
-#define LEVEL_INFO_H
-#include "defs.h"
+#ifndef LEVEL_INFO_HPP
+#define LEVEL_INFO_HPP
+#include "defs.hpp"
 
 /*A structure that contains information about the bid and ask volumes traded at a price*/
 struct Level{
