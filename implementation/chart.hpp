@@ -6,10 +6,10 @@ Swing = structure that contains information about swing points i.e swing high an
 
 */
 
-#ifndef CHART_H
-#define CHART_H
-#include "candlestick.h"
-#include "defs.h"
+#ifndef CHART_HPP
+#define CHART_HPP
+#include "candlestick.hpp"
+#include "defs.hpp"
 #include <filesystem>
 #include <cmath>
 
