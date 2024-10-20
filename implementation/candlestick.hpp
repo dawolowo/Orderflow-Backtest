@@ -3,11 +3,11 @@ This file contains necessary code that describes/ mimics a candlestick
 CandleStick = a replica object of a candlestick
 */
 
-#ifndef CANDLESTICK_H
-#define CANDLESTICK_H
+#ifndef CANDLESTICK_HPP
+#define CANDLESTICK_HPP
 
-#include "defs.h"
-#include "level_info.h"
+#include "defs.hpp"
+#include "level_info.hpp"
 #include <limits>
 
 class CandleStick{
