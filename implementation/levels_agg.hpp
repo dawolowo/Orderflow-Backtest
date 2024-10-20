@@ -4,12 +4,12 @@ Aggregrate in this case means to restructure the data like a footprint chart
 Footprint = a candlestick that contains traded bid and ask volume at various price intervals
 */
 
-#ifndef LEVELS_AGG_H
-#define LEVELS_AGG_H
-#include "defs.h"
-#include "data.h"
-#include "level_info.h"
-#include "candlestick.h"
+#ifndef LEVELS_AGG_HPP
+#define LEVELS_AGG_HPP
+#include "defs.hpp"
+#include "data.hpp"
+#include "level_info.hpp"
+#include "candlestick.hpp"
 
 namespace levels{
     const char *price_column = "price", *qty_column = "qty", *time_column = "time", *is_buyer_maker_column = "bim";
