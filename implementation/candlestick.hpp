@@ -39,12 +39,12 @@ public:
         return _cot;
     }
     //@return Price with the highest ask volume
-    Price acot(){
+    Price ask_cot(){
         if (!_is_set)_set_info();
         return _acot;
     }
     //@return Price with the highest bid volume
-    Price bcot(){
+    Price bid_cot(){
         if (!_is_set) _set_info();
         return _bcot;
     }
