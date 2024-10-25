@@ -64,6 +64,8 @@ public:
     }
     /*@brief Prints statistical information about the strategy backtested to the console.*/
     void print_stat(){
+        std::ios cout_state(nullptr);
+        cout_state.copyfmt(std::cout); // To reset the console later
         std::cout << std::setprecision(4) << std::fixed;
         std::cout << "winrate : " << ((double) (_short_wins+_long_wins))/_n_trades << "\tnumber of trades : " << _n_trades
         << "\nmax loss in a row : " << _max_loss_in_a_row  << "\tmax win in a row : " << _max_win_in_a_row 
@@ -73,7 +75,7 @@ public:
         << (_shorts > 0 ? ((double) _short_wins)/ _shorts : 0) 
         << "\nsignal rate : " << (_candles.size() > 0 ? ((double)_n_trades)/ _candles.size() : 0) << "\treturns : " 
         << _returns << "\n";
-        std::cout.unsetf(std::ios::scientific | std::ios::fixed);
+        std::cout.copyfmt(cout_state);
     }
     /*Prints the time, direction and the trades success to the console*/
     void print_trades(){
@@ -95,7 +97,7 @@ public:
             localtime_s(&ti, &temp);
             std::cout << ti.tm_year+1900 << "/" << ti.tm_mon+1 << "/" << ti.tm_mday << " " << ti.tm_hour << ":" << ti.tm_min << "\t" 
             << (tr.direction == Direction::buy? "buy" : "sell") << "\t" << (tr.success? "successful" : "not successful") 
-            << "\tent : " << tr.entry << "\tsl : " << tr.sl << "\ttp : " << tr.tp << std::endl;
+            << "\tent : " << tr.entry << "\tsl : " << tr.sl << "\ttp : " << tr.tp << "\t" << tr.comment << std::endl;
         }
     }
 
