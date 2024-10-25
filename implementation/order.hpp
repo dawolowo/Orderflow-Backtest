@@ -27,9 +27,14 @@ struct Trade{
     Price tp; // take profit
     time_t time_stamp;
     Direction direction;
+    /*Additional information about the trade for easy debugging e.g values of variables when the trade was taken. @note It would be the
+     same as Order::comment
+    */
+    std::string_view comment; 
     bool success;
     bool trade_completed = false;
     double rr = 0; // reward-to-risk
+    
 };
 /*Contains elements of an order.
 
@@ -45,6 +50,7 @@ struct Order{
     int counter = 0; // to keep track of number of candlestick since it was added. @note Should be left as it is.
     bool filled = false;
     bool cancelled = false;
+    std::string_view comment; //Additional information about the order for easy debugging e.g values of variables when the order was placed
 };
 
 #endif
