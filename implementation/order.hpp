@@ -47,10 +47,11 @@ struct Order{
     OrderType order_type;
     // the number of candlestick it should wait for before cancelling. Only necessary of order_type = limit
     int cancel_after; 
+    std::string comment; //Additional information about the order for easy debugging e.g values of variables when the order was placed
     int counter = 0; // to keep track of number of candlestick since it was added. @note Should be left as it is.
     bool filled = false;
     bool cancelled = false;
-    std::string_view comment; //Additional information about the order for easy debugging e.g values of variables when the order was placed
+    
 };
 
 #endif
