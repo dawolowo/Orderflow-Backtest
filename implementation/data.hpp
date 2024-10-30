@@ -1,7 +1,6 @@
 /*
  This is file contains code necessary to read time and sales data specifically from binance. 
 */
-
 #ifndef DATA_HPP
 #define DATA_HPP
 
@@ -21,8 +20,8 @@ namespace data{
     }
 
     /*streams a csv file and fills the row parameter with the content. Reads a single row.
-    @tparam ncol number of columns to read
-    @tparam row vector that will be filled with the read row of the csv file. Empty vector should be passed
+    @param ncol number of columns to read
+    @param row vector that will be filled with the read row of the csv file. Empty vector should be passed
     */
     void stream_file(const size_t ncol, std::vector<std::string> &row){
         char x;
@@ -37,8 +36,8 @@ namespace data{
         }
     }
     /*streams a csv file and fills the row parameter with the content. Reads a single line.
-    @tparam cols vector containing the column names
-    @tparam row unordered map that will be filled with the read row of the csv file. Its key contains the column names 
+    @param cols vector containing the column names
+    @param row unordered map that will be filled with the read row of the csv file. Its key contains the column names 
     and value contains data
     */
     void stream_file(const std::vector<const char *> &cols, std::unordered_map<const char *, std::string> &row){
