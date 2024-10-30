@@ -9,7 +9,14 @@ CandleStick = a replica object of a candlestick
 #include "defs.hpp"
 #include "level_info.hpp"
 #include <limits>
-
+/*Object storing information about the candlestick
+@param open open of the candle
+@param high high of the candle
+@param low low of the candle
+@param close close of the candle
+@time time open time of the candle
+@footprint footprint of the candle
+*/
 class CandleStick{
 public:
     double imbalance_level = 3; // minimum ratio between bid and ask to indicate imbalance
@@ -102,7 +109,7 @@ public:
     /*@return map containing the footprint*/
     const std::map<Price, Level, std::greater<Price>> &footprint() const {return _footprint;}
     /*Recalculates the value area using the percentage given.
-    @tparam percentage percentage of the value area
+    @param percentage percentage of the value area
     @note percentage should be in ratio e.g 0.7 instead of 70%*/
     void set_va(double percentage){
         _value_area(percentage);
@@ -202,7 +209,7 @@ private:
     }
     
     /*Finds the value area high and value area low of the footprint given percentage
-    @tparam percentage The percentage of total volume the the VAH and VAL should enclose
+    @param percentage The percentage of total volume the the VAH and VAL should enclose
     */
     void _value_area(double perecentage){
         if (percentage > 1.0) percentage = 1.0;
