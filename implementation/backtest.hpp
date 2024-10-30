@@ -12,9 +12,9 @@ BackTest = a class that contains 'properties' to simulate live market and test a
 #include "order.hpp"
 
 /*An object that backtest a strategy on a given data
-@tparam candles vector containing the candlesticks to be backtested
-@tparam chart chart containing the candlesticks to be backtested
-@tparam strategy function containing strategy to be backtested
+@param candles vector containing the candlesticks to be backtested
+@param chart chart containing the candlesticks to be backtested
+@param strategy function containing strategy to be backtested
 @note Limit order trades might not be backtested correctly due to not using tick data. Nevertheless, result won't vary much from
 live testing unless very few trades were taken.
 */
@@ -88,7 +88,7 @@ public:
             << (tr.direction == Direction::buy? "buy" : "sell") << "\t" << (tr.success? "successful" : "not successful") << std::endl;
         }        
     }
-    /*Print the time, direction, trades success, entry, stop loss, take profit to the console*/
+    /*Print the time, direction, trades success, entry, stop loss, take profit and comment to the console*/
     void debug(){
         std::tm ti;
         time_t temp;
@@ -180,7 +180,7 @@ private:
     void _add_trade(Trade &&trade){ _trades.push_back(trade);}
     // Fills an order
     void _fill(Order &od){
-        _add_trade(Trade(od.entry, od.sl, od.tp, _candles[_index].time_stamp(), od.direction));
+        _add_trade(Trade(od.entry, od.sl, od.tp, _candles[_index].time_stamp(), od.direction, od.comment));
         od.filled = true;
     }
     /*Manage orders. Responsible for cancelling and filling orders*/
