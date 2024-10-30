@@ -25,6 +25,9 @@ struct Swing{
     Price price; // Price where it formed
     Source source; // typically high and low. high indicating swing high and low indicating swing low. source can also be close as some traders use
 };
+/*Collection of CandleSticks
+@param candles vector of candles
+*/
 class Chart{
 public:
     Chart() = default;
@@ -32,10 +35,10 @@ public:
     Chart(std::vector<CandleStick> &candles){_candles = candles; }
 
     size_t size()const {return _candles.size();}
-    /*loads the data stored in a file to Chart object
+    /*Loads the data stored in a file to Chart object
 
     Data should contain the aggragrated data which is stored in .txt . To get this, data see agg_store()
-    @tparam file_path path to the .txt file containing the aggregated data
+    @param file_path path to the .txt file containing the aggregated data
     */
     void load(const char *file_path){
         
@@ -92,8 +95,8 @@ public:
         return f;
     }
     /* Applies your custom indicator to the chart
-    @tparam name name of the indicator. It will be used to access your indicator
-    @tparam data data of the indicator
+    @param name name of the indicator. It will be used to access your indicator
+    @param data data of the indicator
     @note Ensure that look ahead bias is not being included in the data
     */
     void custom_indicator(const char *name, std::vector<Price> &data){
@@ -103,7 +106,7 @@ public:
     }
     /*@brief selects an indicator
     @return Data of the indicator selected
-    @tparam name name of the indicator
+    @param name name of the indicator
     */
     const std::vector<Price> &select_indicator(const char *name){
         if (_indicators.find(name) == _indicators.end()) throw std::logic_error("cause = select_indicator() : Indicator does not exist\n");
