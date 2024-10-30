@@ -10,7 +10,7 @@ Trade = a structure that contains elements of a real life executed order
 #include "defs.hpp"
 
 /*Indicates the direction of a trade/ order*/
-enum class Direction{
+enum class Direction {
     buy,
     sell
 };
@@ -20,8 +20,15 @@ enum OrderType {
     limit
 };
 
-/*Contain elements of a typical trade i.e an executed order*/
-struct Trade{
+/*Contain elements of a typical trade i.e an executed order
+@param entry entry price
+@param sl stop loss
+@param tp take profit
+@param time_stamp time of entry
+@param direction direction of order, buy/sell
+@param comment additional information on order. For easy debugging
+*/
+struct Trade {
     Price entry; // entry price
     Price sl; // stop loss
     Price tp; // take profit
@@ -34,11 +41,19 @@ struct Trade{
     bool success;
     bool trade_completed = false;
     double rr = 0; // reward-to-risk
-    
 };
+
 /*Contains elements of an order.
 
-Order is unexecuted. Not to be confused with Trade, it becomes a Trade when executed.*/
+Order is unexecuted. Not to be confused with Trade, it becomes a Trade when executed.
+@param entry entry price
+@param sl stop loss
+@param tp take profit
+@param direction direction of order, buy/sell
+@param order_type type of order, market order/ limit order
+@param cancel_after maximum number of candles before cancelling if order is not triggered (for limit ordertype)
+@param comment additional information on order. For easy debugging
+*/
 struct Order{
     Price entry;
     Price sl; // stop loss
