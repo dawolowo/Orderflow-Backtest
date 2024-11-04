@@ -11,10 +11,12 @@ struct Level{
     Price price;
     Quantity bids = 0;
     Quantity asks = 0;
+
     // Checks for buy imbalance
     bool buy_imbalance(double ratio) const {
         return bids > ratio * asks;
     }
+
     // Checks for sell imbalance
     bool sell_imbalance(double ratio) const{
         return asks > ratio * bids;
