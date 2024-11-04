@@ -16,21 +16,21 @@ BackTest = a class that contains 'properties' to simulate live market and test a
 @param chart chart containing the candlesticks to be backtested
 @param strategy function containing strategy to be backtested
 @note Limit order trades might not be backtested correctly due to not using tick data. Nevertheless, result won't vary much from
-live testing unless very few trades were taken.
+live testing.
 */
 class BackTest{
 public:
     double risk = 1; //Risk per trade in percentage. @note Should not be negative
 
-    BackTest(std::vector<CandleStick> &candles, void (*strategy) (BackTest &)){
-        _candles = candles;
+    BackTest(std::vector<CandleStick> &candles, void (*strategy) (BackTest &)) : _candles(candles){
         _strategy = strategy;
     }
-    BackTest(Chart &chart, void (*strategy) (BackTest &)){
+
+    BackTest(Chart &chart, void (*strategy) (BackTest &)) : _candles(chart.candles()){
         _chart = chart;
         _strategy = strategy;
-        _candles = _chart.candles();
     }
+
     /*Runs the backtest on the strategy*/
     void run(){
         _reset();
@@ -42,26 +42,35 @@ public:
         }
         _run_analysis();
     }
+    
     // @return Index of the current candle during backtest
     size_t index(){return _index;}
+    
     //@return candles in backtest engine
     std::vector<CandleStick> &candles() {return _candles;}
+    
     //@return chart
     Chart &chart() {return _chart;}
+    
     //@return Returns of the strategy @note Not in percentage
     double returns(){return _returns;}
+   
     //@return The accuracy of the strategy @note Not in percentage
     double winrate(){return ((double) (_short_wins+_long_wins))/_n_trades;}
+    
     //@return The maximum drawdown @note Not in percentage
     double max_dd(){return _max_dd;}
+    
     /*Adds an order to the backtest engine*/
     void add_order(Order &order){
         if (_check(order)) _orders.push_back(order);
     }
+    
     /*Adds an order to the backtest engine*/
     void add_order(Order &&order){
         add_order(order);
     }
+    
     /*@brief Prints statistical information about the strategy backtested to the console.*/
     void print_stat(){
         std::ios cout_state(nullptr);
@@ -77,6 +86,7 @@ public:
         << _returns << "\n";
         std::cout.copyfmt(cout_state);
     }
+    
     /*Prints the time, direction and the trades success to the console*/
     void print_trades(){
         std::tm ti;
@@ -88,6 +98,7 @@ public:
             << (tr.direction == Direction::buy? "buy" : "sell") << "\t" << (tr.success? "successful" : "not successful") << std::endl;
         }        
     }
+    
     /*Print the time, direction, trades success, entry, stop loss, take profit and comment to the console*/
     void debug(){
         std::tm ti;
@@ -101,9 +112,8 @@ public:
         }
     }
 
-
 private:
-    std::vector<CandleStick> _candles;
+    std::vector<CandleStick> &_candles;
     Chart _chart;
     void (*_strategy) (BackTest &);
     size_t _index = 0;
@@ -111,6 +121,7 @@ private:
     std::vector<Order> _orders;
     size_t _long_wins = 0, _short_wins = 0, _longs = 0, _shorts = 0, _n_trades = 0;
     size_t _max_loss_in_a_row = 0, _max_win_in_a_row = 0;
+    
     /* total reward to risk ratio, negative rr means not profitable. you can multiply it by your risk per trade in dollars to get
      the profit/loss over the backtest.
     */
@@ -118,6 +129,7 @@ private:
     double _max_dd = 0; 
     Quantity _equity = 10'000;
     Quantity _max_equity = _equity, _initial_equity = _equity;
+    
     /*Longest duration of a drawdown.@note It is unrelated to max drawdown*/
     long long _max_dd_duration = 0, _dd_duration = 0;
     double _returns = 0;
@@ -148,6 +160,7 @@ private:
         }
         _returns = (_equity-_initial_equity)/_initial_equity;
     }
+    
     /*Manage trades. Responsible for checking if trades is successful or not*/
     void _manage_trades(){
         for (Trade &tr : _trades){
@@ -176,13 +189,16 @@ private:
             }
         }
     }
+    
     /*Adds a trade to the backtest engine*/
     void _add_trade(Trade &&trade){ _trades.push_back(trade);}
+    
     // Fills an order
     void _fill(Order &od){
         _add_trade(Trade(od.entry, od.sl, od.tp, _candles[_index].time_stamp(), od.direction, od.comment));
         od.filled = true;
     }
+    
     /*Manage orders. Responsible for cancelling and filling orders*/
     void _manage_orders(){
         for (Order &od : _orders){
@@ -199,11 +215,13 @@ private:
             od.counter++;
         }
     }
+    
     //Update _equity 
     void _update_balance(Trade &tr){
         double reward = tr.rr * risk;
         _equity += _equity*reward/100;
     }
+    
     //Update drawdowns
     void _update_dd(){
         if (_equity >= _max_equity){
@@ -216,11 +234,13 @@ private:
             if (dd < _max_dd) _max_dd = dd;
         }
     }
+    
     //Checks if an order is proper
     bool _check(Order &order){
         return (order.entry > order.sl && order.tp > order.entry && order.direction == Direction::buy)
         ||  (order.entry < order.sl && order.tp < order.entry && order.direction == Direction::sell);
     }
+    
     /* Resets all private variables.
     @note Does not reset public variables
     */
