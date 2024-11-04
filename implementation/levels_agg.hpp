@@ -25,6 +25,7 @@ namespace levels{
         y /= 1000;        
         return x/interval == y/interval;
     }
+
     /*@brief Fills footprint parameter with the necessary information about the price level such as bid, ask.
     @param footprint map containing the footprint information
     @param row unordered map containing the row that was read
@@ -97,6 +98,7 @@ namespace levels{
         data::close_file();
         return no_of_lines;
     }
+
     /*@brief Aggregates the data and fills the candles parameter with the candlestick.
     @param path location of the file to be read from
     @param time_interval time interval (in seconds)
