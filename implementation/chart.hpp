@@ -20,11 +20,13 @@ enum class Source{
     low,
     close
 };
+
 struct Swing{
     size_t index; // where in the chart it occured. if index = -1 it doesn't exist
     Price price; // Price where it formed
     Source source; // typically high and low. high indicating swing high and low indicating swing low. source can also be close as some traders use
 };
+
 /*Collection of CandleSticks
 @param candles vector of candles
 */
@@ -35,13 +37,16 @@ public:
     Chart(std::vector<CandleStick> &candles){_candles = candles; }
 
     size_t size()const {return _candles.size();}
+    
+    //Returns true if chart is empty
+    bool empty(){return _candles.empty();}
+
     /*Loads the data stored in a file to Chart object
 
     Data should contain the aggragrated data which is stored in .txt . To get this, data see agg_store()
     @param file_path path to the .txt file containing the aggregated data
     */
-    void load(const char *file_path){
-        
+    void load(const char *file_path){ 
         std::filesystem::path filepath = file_path;
         if (filepath.extension() != ".txt") throw std::logic_error("cause = load() : file name should end with .txt\n");
         std::fstream file;
@@ -55,11 +60,11 @@ public:
         }
         file.close();
     }
+
     /*Applies simple moving average indicator to the chart. 
     @return Name of the indicator
     */
-    const char *apply_sma(int length, Source source = Source::close){
-        
+    const char *apply_sma(int length, Source source = Source::close){      
         std::string name = "sma_" + std::to_string(length);
         const char *f = name.c_str();
         double sum = 0;
@@ -76,10 +81,10 @@ public:
         }
         return f;
     }
+
     /*Applies standard deviation indicator to the chart. 
     @return Name of the indicator*/
     const char *apply_std(int length, Source source = Source::close){
-        
         const char *sma = apply_sma(length, source);
         std::string name = "std" + std::to_string(length);
         const char *f = name.c_str();
@@ -94,16 +99,17 @@ public:
         }
         return f;
     }
+
     /* Applies your custom indicator to the chart
     @param name name of the indicator. It will be used to access your indicator
     @param data data of the indicator
     @note Ensure that look ahead bias is not being included in the data
     */
-    void custom_indicator(const char *name, std::vector<Price> &data){
-        
+    void custom_indicator(const char *name, std::vector<Price> &data){        
         if (data.size() != _candles.size()) throw std::logic_error("cause = custom_indicator() : Data of indicator not equal to length of data in chart\n");
         _indicators[name] = data;
     }
+
     /*@brief selects an indicator
     @return Data of the indicator selected
     @param name name of the indicator
@@ -112,17 +118,17 @@ public:
         if (_indicators.find(name) == _indicators.end()) throw std::logic_error("cause = select_indicator() : Indicator does not exist\n");
         return _indicators[name];
     }
-    /*@return vector containing candles*/
-    const std::vector<CandleStick> &candles() const{return _candles;}
-    CandleStick &operator[](size_t id){return _candles[id];}
 
+    /*@return vector containing candles*/
+    std::vector<CandleStick> &candles() {return _candles;}
+    CandleStick &operator[](size_t id){return _candles[id];}
 
 private:
     std::vector<CandleStick> _candles;
     std::map<const char *, std::vector<Price>> _indicators;
+
     /*@return Data corresponding to source*/
-    Price _select(const CandleStick &x, const Source &source){
-        
+    Price _select(const CandleStick &x, const Source &source){        
         if (source == Source::open) return x.open();
         else if (source == Source::high) return x.high();
         else if (source == Source::low) return x.low();
