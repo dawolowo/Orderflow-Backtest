@@ -35,6 +35,7 @@ namespace data{
             else temp += x;
         }
     }
+
     /*streams a csv file and fills the row parameter with the content. Reads a single line.
     @param cols vector containing the column names
     @param row unordered map that will be filled with the read row of the csv file. Its key contains the column names 
