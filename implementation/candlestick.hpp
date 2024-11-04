@@ -21,7 +21,9 @@ class CandleStick{
 public:
     double imbalance_level = 3; // minimum ratio between bid and ask to indicate imbalance
     double percentage = 0.7; // Percentage of volume used to calculate the value area. @note Should be in ratio e.g 0.7 instead of 70%
+    
     CandleStick() = default;
+    
     CandleStick(Price open, Price high, Price low, Price close, time_t time, std::map<Price, Level, std::greater<Price>> &footprint) {
         _open = open;
         _high = high;
@@ -30,76 +32,95 @@ public:
         _time_stamp = time;
         _footprint = footprint;
     }
+    
     //@return opening time of the candle
     time_t time_stamp() const { return _time_stamp;}
+    
     //@return open of the candle
     Price open() const {return _open;}
+    
     //@return close of the candle
     Price close() const {return _close;}
+    
     //@return high of the candle
     Price high() const {return _high;}
+    
     //@return low of the candle
     Price low() const {return _low;}
+    
     /*@return price with the highest volume*/
     Price cot() {
         if (!_is_set) _set_info();
         return _cot;
     }
+    
     //@return Price with the highest ask volume
     Price ask_cot(){
         if (!_is_set)_set_info();
         return _acot;
     }
+    
     //@return Price with the highest bid volume
     Price bid_cot(){
         if (!_is_set) _set_info();
         return _bcot;
     }
+    
     /*@return volume weighted price of the candlestick*/
     Price vwap() {
         if (!_is_set) _set_info();
         return _vwap;
     }
+    
     /*@return Value area high of the candlestick*/
     Price vah(){
         if (_vah == -1) _value_area(percentage);
         return _vah;
     }
+    
     /*@return value area low of the candlestick*/
     Price val(){
         if (_val == -1) _value_area(percentage);
         return _val;
     }
+    
     //@return total ask volume
     Quantity ask_vol() {
         if (!_is_set) _set_info();
         return _ask_vol;}
+    
     //@return total bids volume
     Quantity bid_vol() {
         if (!_is_set) _set_info();
         return _bid_vol;
     }
+    
     //@return delta of the candle
     Quantity delta() { 
         return bid_vol()- ask_vol(); 
     }
+    
     //@return maximum delta in the candle
     Quantity max_delta() {
         if (!_is_set) _set_info();
         return _max_delta; 
     }
+    
     //@return minimum delta in the candle
     Quantity min_delta() { 
         if (!_is_set) _set_info();
         return _min_delta; 
     }
+    
     //@return total volume traded
     Quantity volume() {return bid_vol()+ask_vol();}
+    
     /*@return number of buying imbalance in the candlestick*/
     size_t buy_imbalance(){
         if (!_is_set) _set_info();
         return _buy_imb;
     }
+    
     /*@return number of selling imbalance in the candlestick*/
     size_t sell_imbalance(){
         if (!_is_set) _set_info();
@@ -108,6 +129,7 @@ public:
 
     /*@return map containing the footprint*/
     const std::map<Price, Level, std::greater<Price>> &footprint() const {return _footprint;}
+    
     /*Recalculates the value area using the percentage given.
     @param percentage percentage of the value area
     @note percentage should be in ratio e.g 0.7 instead of 70%*/
