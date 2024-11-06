@@ -9,6 +9,7 @@ CandleStick = a replica object of a candlestick
 #include "defs.hpp"
 #include "level_info.hpp"
 #include <limits>
+#include <windows.h>
 /*Object storing information about the candlestick
 @param open open of the candle
 @param high high of the candle
@@ -24,7 +25,7 @@ public:
     
     CandleStick() = default;
     
-    CandleStick(Price open, Price high, Price low, Price close, time_t time, std::map<Price, Level, std::greater<Price>> &footprint) {
+    CandleStick(Price open, Price high, Price low, Price close, time_t time, std::map<Price, Level, std::greater<Price>> &footprint){
         _open = open;
         _high = high;
         _low = low;
@@ -137,16 +138,50 @@ public:
         _value_area(percentage);
     }
     
-    /*Prints the footprint of the candle stick. @note '#' infront of bid or ask represents imabalance*/
+    /*Prints the footprint of the candle stick. @note colors indicates imabalance. Green = buy imbalance, Red = sell imbalance*/
     void print_fp() const {
+        SetConsoleOutputCP(CP_UTF8);
         for (auto &x : _footprint){
+            std::cout << x.first << " -> " ;
             if (x.second.buy_imbalance(imbalance_level)) 
-                std::cout << x.first << " -> b: # " << x.second.bids << "\ta: "<< x.second.asks;
+                std::cout << "\033[92m" << x.second.bids << "\033[0m" << "\t\t"<< x.second.asks;
             else if (x.second.sell_imbalance(imbalance_level))
-                std::cout << x.first << " -> b: " << x.second.bids << "\ta: # "<< x.second.asks;
+                std::cout << x.second.bids << "\t\t" << "\033[91m"<< x.second.asks << "\033[0m";
             else
-                std::cout << x.first << " -> b: " << x.second.bids << "\ta: "<< x.second.asks ;
-            std::cout << std::endl;
+                std::cout << x.second.bids << "\t\t"<< x.second.asks ;
+            std::cout << "\n";
+        }
+    }
+
+    /*Prints the delta in the candlestick. @note Green = positive delta, Red = negative delta*/
+    void print_delta() const {
+        SetConsoleOutputCP(CP_UTF8);
+        for (auto &x : _footprint){
+            std::cout << x.first << " -> " ;
+            if (x.second.bids > x.second.asks) 
+                std::cout << "\033[92m" << x.second.bids - x.second.asks << "\033[0m";
+            else if (x.second.asks > x.second.bids)
+                std::cout << "\033[91m"<< x.second.bids - x.second.asks << "\033[0m";
+            else
+                std::cout << x.second.bids - x.second.asks ;
+            std::cout << "\n";
+        }
+    }
+    
+    /*Prints the volume bar and the associated volume @note Green = positive delta, Red = negative delta*/
+    void print_bar(){
+        SetConsoleOutputCP(CP_UTF8);
+        int bars = _footprint.size() * 8;
+        for (auto &x : _footprint){
+            std::cout << x.first << " -> ";
+            for (int i = 0; i <= (x.second.asks + x.second.bids)*bars/volume(); i++)
+                std::cout << "⬜";
+            if (x.second.bids > x.second.asks)
+                std::cout << "\033[92m" ;
+            else
+                std::cout << "\033[91m";
+            std::cout << " " << x.second.asks + x.second.bids  << "\033[0m" << "\n";
+            
         }
     }
 
