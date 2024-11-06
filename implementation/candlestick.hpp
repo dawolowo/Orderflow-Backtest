@@ -9,7 +9,7 @@ CandleStick = a replica object of a candlestick
 #include "defs.hpp"
 #include "level_info.hpp"
 #include <limits>
-#include <windows.h>
+
 /*Object storing information about the candlestick
 @param open open of the candle
 @param high high of the candle
@@ -139,24 +139,26 @@ public:
     }
     
     /*Prints the footprint of the candle stick. @note colors indicates imabalance. Green = buy imbalance, Red = sell imbalance*/
-    void print_fp() const {
-        SetConsoleOutputCP(CP_UTF8);
+    void print_fp() {
         for (auto &x : _footprint){
-            std::cout << x.first << " -> " ;
+            if (x.first == cot())
+                std::cout << "\033[33m";
+            std::cout << x.first << " -> ";
             if (x.second.buy_imbalance(imbalance_level)) 
                 std::cout << "\033[92m" << x.second.bids << "\033[0m" << "\t\t"<< x.second.asks;
             else if (x.second.sell_imbalance(imbalance_level))
                 std::cout << x.second.bids << "\t\t" << "\033[91m"<< x.second.asks << "\033[0m";
             else
                 std::cout << x.second.bids << "\t\t"<< x.second.asks ;
-            std::cout << "\n";
-        }
+            std::cout << "\033[0m" << "\n";
+        } 
     }
 
     /*Prints the delta in the candlestick. @note Green = positive delta, Red = negative delta*/
-    void print_delta() const {
-        SetConsoleOutputCP(CP_UTF8);
+    void print_delta() {
         for (auto &x : _footprint){
+            if (x.first == cot())
+                std::cout << "\033[33m";
             std::cout << x.first << " -> " ;
             if (x.second.bids > x.second.asks) 
                 std::cout << "\033[92m" << x.second.bids - x.second.asks << "\033[0m";
@@ -167,19 +169,21 @@ public:
             std::cout << "\n";
         }
     }
-    
+
     /*Prints the volume bar and the associated volume @note Green = positive delta, Red = negative delta*/
     void print_bar(){
-        SetConsoleOutputCP(CP_UTF8);
         int bars = _footprint.size() * 8;
         for (auto &x : _footprint){
+            if (x.first == cot())
+                std::cout << "\033[33m";
             std::cout << x.first << " -> ";
+
             for (int i = 0; i <= (x.second.asks + x.second.bids)*bars/volume(); i++)
                 std::cout << "⬜";
             if (x.second.bids > x.second.asks)
-                std::cout << "\033[92m" ;
+                std::cout << "\033[92m" ; //set color to green
             else
-                std::cout << "\033[91m";
+                std::cout << "\033[91m"; // set color to red
             std::cout << " " << x.second.asks + x.second.bids  << "\033[0m" << "\n";
             
         }
