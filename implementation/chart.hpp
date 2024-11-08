@@ -64,12 +64,12 @@ public:
     /*Applies simple moving average indicator to the chart. 
     @return Name of the indicator
     */
-    const char *apply_sma(int length, Source source = Source::close){      
+    const char *apply_sma(size_t length, Source source = Source::close){      
         std::string name = "sma_" + std::to_string(length);
         const char *f = name.c_str();
         double sum = 0;
-        int n = 1, rebalance = 0;
-        for (int i = 0; i < _candles.size(); i++){
+        size_t n = 1, rebalance = 0;
+        for (size_t i = 0; i < _candles.size(); i++){
             Price x = _select(_candles[i], source);
             sum += x;
             if (i >= length){
@@ -84,14 +84,14 @@ public:
 
     /*Applies standard deviation indicator to the chart. 
     @return Name of the indicator*/
-    const char *apply_std(int length, Source source = Source::close){
+    const char *apply_std(size_t length, Source source = Source::close){
         const char *sma = apply_sma(length, source);
         std::string name = "std" + std::to_string(length);
         const char *f = name.c_str();
-        int n = 1, rebalance = 0;
-        for (int i = 0; i < size(); i++){
+        size_t n = 1, rebalance = 0;
+        for (size_t i = 0; i < size(); i++){
             double temp = 0; // temp = ∑(x- x̄)²
-            for (int j = rebalance; j < n+rebalance; j++)
+            for (size_t j = rebalance; j < n+rebalance; j++)
                 temp += pow(_select(_candles[j], source) - select_indicator(sma)[i], 2); // (x- x̄)²
             _indicators[f].push_back(sqrt(temp/n));
             if (n < length) n++;
