@@ -20,8 +20,10 @@ CandleStick = a replica object of a candlestick
 */
 class CandleStick{
 public:
-    double imbalance_level = 3; // minimum ratio between bid and ask to indicate imbalance
-    double percentage = 0.7; // Percentage of volume used to calculate the value area. @note Should be in ratio e.g 0.7 instead of 70%
+    // minimum ratio between bid and ask to indicate imbalance
+    double imbalance_level = 3; 
+    // Percentage of volume used to calculate the value area. @note Should be in ratio e.g 0.7 instead of 70%
+    double percentage = 0.7;
     
     CandleStick() = default;
     
