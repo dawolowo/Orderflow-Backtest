@@ -20,18 +20,17 @@ namespace levels{
     @param interval interval
     @note interval should be in seconds
     */
-    bool within_interval(time_t x, time_t y, const int &interval){
+    inline bool within_interval(time_t x, time_t y, const int &interval){
         x /= 1000;   // I am dividing because this time format is in milliseconds
         y /= 1000;        
         return x/interval == y/interval;
     }
-
     /*@brief Fills footprint parameter with the necessary information about the price level such as bid, ask.
     @param footprint map containing the footprint information
     @param row unordered map containing the row that was read
     @param price_interval price interval between each price level. It determines each price level of the footprint
     */
-    void set_price_level(std::map<Price, Level, std::greater<Price>> &footprint, std::unordered_map<const char *, std::string> &row,
+    inline void set_price_level(std::map<Price, Level, std::greater<Price>> &footprint, std::unordered_map<const char *, std::string> &row,
              const Price price_interval){
         
         Price price = stod(row[price_column]);
@@ -98,7 +97,6 @@ namespace levels{
         data::close_file();
         return no_of_lines;
     }
-
     /*@brief Aggregates the data and fills the candles parameter with the candlestick.
     @param path location of the file to be read from
     @param time_interval time interval (in seconds)
