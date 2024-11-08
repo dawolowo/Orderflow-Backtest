@@ -38,7 +38,7 @@ struct Trade {
      same as Order::comment
     */
     std::string_view comment; 
-    bool success;
+    bool success = false;
     bool trade_completed = false;
     double rr = 0; // reward-to-risk
 };
@@ -61,9 +61,9 @@ struct Order{
     Direction direction;
     OrderType order_type;
     // the number of candlestick it should wait for before cancelling. Only necessary of order_type = limit
-    int cancel_after; 
+    size_t cancel_after = SIZE_MAX; 
     std::string comment; //Additional information about the order for easy debugging e.g values of variables when the order was placed
-    int counter = 0; // to keep track of number of candlestick since it was added. @note Should be left as it is.
+    size_t counter = 0; // to keep track of number of candlestick since it was added. @note Should be left as it is.
     bool filled = false;
     bool cancelled = false;
     
