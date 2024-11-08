@@ -71,7 +71,10 @@ public:
         add_order(order);
     }
     
-    /*@brief Prints statistical information about the strategy backtested to the console.*/
+    /*@brief Prints statistical information about the strategy backtested to the console.@note Max drawdown (duration) is not the duration of 
+    the maximum drawdown, it is the maximum time spent in a drawdown (It may or may not be the maximum drawdown).
+    
+    */
     void print_stat(){
         std::ios cout_state(nullptr);
         cout_state.copyfmt(std::cout); // To reset the console later
@@ -95,7 +98,7 @@ public:
             temp = tr.time_stamp/1000;
             localtime_s(&ti, &temp);
             std::cout << ti.tm_year+1900 << "/" << ti.tm_mon+1 << "/" << ti.tm_mday << " " << ti.tm_hour << ":" << ti.tm_min << "\t" 
-            << (tr.direction == Direction::buy? "buy" : "sell") << "\t" << (tr.success? "successful" : "not successful") << std::endl;
+            << (tr.direction == Direction::buy? "buy" : "sell") << "\t" << (tr.success? "successful" : "not successful") << "\n";
         }        
     }
     
@@ -108,7 +111,7 @@ public:
             localtime_s(&ti, &temp);
             std::cout << ti.tm_year+1900 << "/" << ti.tm_mon+1 << "/" << ti.tm_mday << " " << ti.tm_hour << ":" << ti.tm_min << "\t" 
             << (tr.direction == Direction::buy? "buy" : "sell") << "\t" << (tr.success? "successful" : "not successful") 
-            << "\tent : " << tr.entry << "\tsl : " << tr.sl << "\ttp : " << tr.tp << "\t" << tr.comment << std::endl;
+            << "\tent : " << tr.entry << "\tsl : " << tr.sl << "\ttp : " << tr.tp << "\t" << tr.comment << "\n";
         }
     }
 
@@ -193,7 +196,7 @@ private:
     /*Adds a trade to the backtest engine*/
     void _add_trade(Trade &&trade){ _trades.push_back(trade);}
     
-    // Fills an order
+    // Execute an order
     void _fill(Order &od){
         _add_trade(Trade(od.entry, od.sl, od.tp, _candles[_index].time_stamp(), od.direction, od.comment));
         od.filled = true;
@@ -206,13 +209,14 @@ private:
                 if (od.order_type == OrderType::mo){
                     od.entry = _candles[_index].close();
                     _fill(od);
+                }//od.counter > 0 is important to prevent limit orders from executing immediately they are placed. DON'T TOUCH
+                else if (od.counter > 0 && (_candles[_index].high() >= od.entry && od.direction == Direction::sell || _candles[_index].low() <= od.entry && od.direction == Direction::buy)){
+                    //This block is for handling limit orders, not obvious. This is because there can only be two orders mo and limit
+                    _fill(od); 
                 }
-                else if (od.counter > 0 && _candles[_index].high() > od.entry && od.entry > _candles[_index].low()){
-                    _fill(od);
-                }
-                else if (od.counter > od.cancel_after) od.cancelled = true;
+                if (od.counter > od.cancel_after) od.cancelled = true;
             }
-            od.counter++;
+            if (od.counter != SIZE_MAX)od.counter++;
         }
     }
     
@@ -237,8 +241,11 @@ private:
     
     //Checks if an order is proper
     bool _check(Order &order){
-        return (order.entry > order.sl && order.tp > order.entry && order.direction == Direction::buy)
-        ||  (order.entry < order.sl && order.tp < order.entry && order.direction == Direction::sell);
+        if ((order.entry < order.sl || order.tp < order.entry) && order.direction == Direction::buy) return false;
+        else if ((order.entry > order.sl || order.tp > order.entry) && order.direction == Direction::sell) return false;
+        else if (order.order_type == OrderType::limit && order.direction == Direction::buy && order.entry > _candles[_index].close()) return false;
+        else if (order.order_type == OrderType::limit && order.direction == Direction::sell && order.entry < _candles[_index].close()) return false;
+        return true;
     }
     
     /* Resets all private variables.
