@@ -25,6 +25,7 @@ namespace levels{
         y /= 1000;        
         return x/interval == y/interval;
     }
+    
     /*@brief Fills footprint parameter with the necessary information about the price level such as bid, ask.
     @param footprint map containing the footprint information
     @param row unordered map containing the row that was read
@@ -53,6 +54,8 @@ namespace levels{
         if (!spot){
             std::string _;
             data::file_in >> _;
+            char __;
+            data::file_in.get(__); // This line is important to get rid of the \n character. FIXED BUG
         }        
 
         Price high, low, close, open;
@@ -93,15 +96,17 @@ namespace levels{
             prev_time = curr_time;
             no_of_lines++;
         }
-        file.close();
+        if (store) file.close();
         data::close_file();
         return no_of_lines;
     }
+
     /*@brief Aggregates the data and fills the candles parameter with the candlestick.
     @param path location of the file to be read from
-    @param time_interval time interval (in seconds)
+    @param column_names names of all columns in the csv. The names would be used to store and access data in the map
     @param candles vector that will contain the candlesticks
     @param price_level_interval the price difference between each price level. It determines each price level of the footprint
+    @param time_interval time interval (in seconds)
     @param is_spot set to true if the data is binance spot data. Default is false.
     @return number of lines read
     */
@@ -113,9 +118,10 @@ namespace levels{
 
     /*@brief Aggregates the data and stores it in the location of store_path.
     @param path location of the file
-    @param time_interval time interval (in seconds)
+    @param column_names names of all columns in the csv. The names would be used to store and access data in the map
     @param store_path location of the text file that will contain the aggregated data
     @param price_level_interval the price difference between each price level. It determines each price level of the footprint
+    @param time_interval time interval (in seconds)
     @param is_spot set to true if the data is binance spot data. Default is false.
     @return number of lines read
     */
