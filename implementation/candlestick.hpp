@@ -27,6 +27,14 @@ public:
     
     CandleStick() = default;
     
+    CandleStick(Price open, Price high, Price low, Price close, time_t time){
+        _open = open;
+        _high = high;
+        _low = low;
+        _close = close;
+        _time_stamp = time;
+    }
+
     CandleStick(Price open, Price high, Price low, Price close, time_t time, std::map<Price, Level, std::greater<Price>> &footprint){
         _open = open;
         _high = high;
@@ -243,13 +251,13 @@ private:
             pv += it.first * (it.second.asks+it.second.bids);
         }
         _is_set = true;
-        _vwap = pv/volume();
+        _vwap = (volume() > 0) ? pv/volume() : 0;
     }
     
     /*helper function for _set_info()*/
     void _setter(const Level &temp){
         Quantity del, vol;
-        del = temp.bids - temp.asks;
+        del = temp.bids - temp.asks; //calculating delta
         vol = temp.bids + temp.asks;
         if (vol > _max_vol){
             _max_vol = vol;
