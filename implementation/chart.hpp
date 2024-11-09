@@ -61,7 +61,9 @@ public:
         file.close();
     }
 
-    /*Applies simple moving average indicator to the chart. 
+    /*Applies simple moving average indicator to the chart.
+    @param length period of the indicator e.g 14-period moving average
+    @param source where it should be applied to i.e (close, open, high, low) of the candle. Default is close.
     @return Name of the indicator
     */
     const char *apply_sma(size_t length, Source source = Source::close){      
@@ -83,6 +85,8 @@ public:
     }
 
     /*Applies standard deviation indicator to the chart. 
+    @param length period of the indicator e.g 14-period
+    @param source where it should be applied to i.e (close, open, high, low) of the candle. Default is close.
     @return Name of the indicator*/
     const char *apply_std(size_t length, Source source = Source::close){
         const char *sma = apply_sma(length, source);
@@ -110,6 +114,16 @@ public:
         _indicators[name] = data;
     }
 
+    /*Adds a candle to the end of the chart
+    @param c candle to be added
+    */
+    void push_back(CandleStick &c){_candles.push_back(c);}
+
+    /*Adds a candle to the end of the chart
+    @param c candle to be added
+    */
+    void push_back(CandleStick &&c){_candles.push_back(c);}
+
     /*@brief selects an indicator
     @return Data of the indicator selected
     @param name name of the indicator
@@ -121,6 +135,7 @@ public:
 
     /*@return vector containing candles*/
     std::vector<CandleStick> &candles() {return _candles;}
+
     CandleStick &operator[](size_t id){return _candles[id];}
 
 private:
