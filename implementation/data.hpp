@@ -8,7 +8,6 @@
 
 namespace data{
     std::fstream file_in;
-    std::streampos last_position;
 
     inline void open_file(const char *path){
         file_in.open(path, std::ios::in);
