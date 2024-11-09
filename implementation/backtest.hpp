@@ -61,6 +61,11 @@ public:
     //@return The maximum drawdown @note Not in percentage
     double max_dd(){return _max_dd;}
     
+    //@return A const reference to the trades taken
+    const std::vector<Trade> &trades(){
+        return _trades;
+    }
+
     /*Adds an order to the backtest engine*/
     void add_order(Order &order){
         if (_check(order)) _orders.push_back(order);
@@ -81,8 +86,8 @@ public:
         std::cout << std::setprecision(4) << std::fixed;
         std::cout << "winrate : " << ((double) (_short_wins+_long_wins))/_n_trades << "\tnumber of trades : " << _n_trades
         << "\nmax loss in a row : " << _max_loss_in_a_row  << "\tmax win in a row : " << _max_win_in_a_row 
-        <<"\nmax drawdown : " << _max_dd  << "\tmax drawdown (duration) : " << _max_dd_duration
-        << "\nlongs : " << _longs << "\tshorts : " << _shorts 
+        <<"\nmax drawdown : " << _max_dd  << "\tmax drawdown (duration) : " << _max_dd_duration << " candles"
+        << "\nlongs : " << _longs << "\t\tshorts : " << _shorts 
         << "\nlongs winrate : " << (_longs > 0? ((double) _long_wins)/ _longs : 0) << "\tshorts winrate : " 
         << (_shorts > 0 ? ((double) _short_wins)/ _shorts : 0) 
         << "\nsignal rate : " << (_candles.size() > 0 ? ((double)_n_trades)/ _candles.size() : 0) << "\treturns : " 
@@ -241,8 +246,8 @@ private:
     
     //Checks if an order is proper
     bool _check(Order &order){
-        if ((order.entry < order.sl || order.tp < order.entry) && order.direction == Direction::buy) return false;
-        else if ((order.entry > order.sl || order.tp > order.entry) && order.direction == Direction::sell) return false;
+        if ((order.entry <= order.sl || order.tp <= order.entry) && order.direction == Direction::buy) return false;
+        else if ((order.entry >= order.sl || order.tp >= order.entry) && order.direction == Direction::sell) return false;
         else if (order.order_type == OrderType::limit && order.direction == Direction::buy && order.entry > _candles[_index].close()) return false;
         else if (order.order_type == OrderType::limit && order.direction == Direction::sell && order.entry < _candles[_index].close()) return false;
         return true;
