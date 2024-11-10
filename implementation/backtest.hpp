@@ -10,6 +10,7 @@ BackTest = a class that contains 'properties' to simulate live market and test a
 #include "candlestick.hpp"
 #include "chart.hpp"
 #include "order.hpp"
+#include <queue>
 
 /*An object that backtest a strategy on a given data
 @param candles vector containing the candlesticks to be backtested
@@ -33,18 +34,20 @@ public:
 
     /*Runs the backtest on the strategy*/
     void run(){
+        time_t start = time(0);
         _reset();
         for (; _index < _candles.size(); ++_index){
             _manage_trades();
-            _strategy(*this);
             _manage_orders();
+            _strategy(*this);
             _update_dd();
         }
         _run_analysis();
+        _time_taken = time(0)-start;
     }
     
     // @return Index of the current candle during backtest
-    size_t index(){return _index;}
+    size_t index() const {return _index;}
     
     //@return candles in backtest engine
     std::vector<CandleStick> &candles() {return _candles;}
@@ -53,22 +56,30 @@ public:
     Chart &chart() {return _chart;}
     
     //@return Returns of the strategy @note Not in percentage
-    double returns(){return _returns;}
+    double returns() const {return _returns;}
    
     //@return The accuracy of the strategy @note Not in percentage
-    double winrate(){return ((double) (_short_wins+_long_wins))/_n_trades;}
+    double winrate() const {return ((double) (_short_wins+_long_wins))/_n_trades;}
     
     //@return The maximum drawdown @note Not in percentage
-    double max_dd(){return _max_dd;}
+    double max_dd() const {return _max_dd;}
     
     //@return A const reference to the trades taken
-    const std::vector<Trade> &trades(){
+    const std::vector<Trade> &trades() const {
         return _trades;
     }
 
     /*Adds an order to the backtest engine*/
     void add_order(Order &order){
-        if (_check(order)) _orders.push_back(order);
+        if (_check(order)){
+            order.entry_id = _index;
+            if (order.order_type == OrderType::mo){
+                order.entry = _candles[_index].close();
+                _fill(order);
+            }
+            else if (order.direction == Direction::buy) _buy_limit.push(order);
+            else _sell_limit.push(order);
+        }
     }
     
     /*Adds an order to the backtest engine*/
@@ -83,15 +94,15 @@ public:
     void print_stat(){
         std::ios cout_state(nullptr);
         cout_state.copyfmt(std::cout); // To reset the console later
-        std::cout << std::setprecision(4) << std::fixed;
-        std::cout << "winrate : " << ((double) (_short_wins+_long_wins))/_n_trades << "\tnumber of trades : " << _n_trades
-        << "\nmax loss in a row : " << _max_loss_in_a_row  << "\tmax win in a row : " << _max_win_in_a_row 
+        std::cout << std::setprecision(4);
+        std::cout << "winrate : " << ((_n_trades > 0 )? (double) (_short_wins+_long_wins)/_n_trades : 0)<< "\tnumber of trades : " 
+        << _n_trades << "\nmax loss in a row : " << _max_loss_in_a_row  << "\tmax win in a row : " << _max_win_in_a_row 
         <<"\nmax drawdown : " << _max_dd  << "\tmax drawdown (duration) : " << _max_dd_duration << " candles"
         << "\nlongs : " << _longs << "\t\tshorts : " << _shorts 
         << "\nlongs winrate : " << (_longs > 0? ((double) _long_wins)/ _longs : 0) << "\tshorts winrate : " 
         << (_shorts > 0 ? ((double) _short_wins)/ _shorts : 0) 
         << "\nsignal rate : " << (_candles.size() > 0 ? ((double)_n_trades)/ _candles.size() : 0) << "\treturns : " 
-        << _returns << "\n";
+        << _returns << "\n" << "time taken : " << _time_taken << "s\tnumber of candles : " << _candles.size() << "\n";
         std::cout.copyfmt(cout_state);
     }
     
@@ -126,8 +137,9 @@ private:
     void (*_strategy) (BackTest &);
     size_t _index = 0;
     std::vector<Trade> _trades;
-    std::vector<Order> _orders;
-    size_t _long_wins = 0, _short_wins = 0, _longs = 0, _shorts = 0, _n_trades = 0;
+    std::priority_queue<Order> _buy_limit; //Descending
+    std::priority_queue<Order, std::vector<Order>, std::greater<Order>> _sell_limit; //Ascending
+    size_t _long_wins = 0, _short_wins = 0, _longs = 0, _shorts = 0, _n_trades = 0, _time_taken = 0;
     size_t _max_loss_in_a_row = 0, _max_win_in_a_row = 0;
     
     /* total reward to risk ratio, negative rr means not profitable. you can multiply it by your risk per trade in dollars to get
@@ -198,30 +210,26 @@ private:
         }
     }
     
-    /*Adds a trade to the backtest engine*/
-    void _add_trade(Trade &&trade){ _trades.push_back(trade);}
-    
     // Execute an order
-    void _fill(Order &od){
-        _add_trade(Trade(od.entry, od.sl, od.tp, _candles[_index].time_stamp(), od.direction, od.comment));
-        od.filled = true;
+    void _fill(const Order &od){
+        _trades.push_back(Trade(od.entry, od.sl, od.tp, _candles[_index].time_stamp(), od.direction, od.comment));
     }
     
     /*Manage orders. Responsible for cancelling and filling orders*/
     void _manage_orders(){
-        for (Order &od : _orders){
-            if (!od.filled && !od.cancelled){
-                if (od.order_type == OrderType::mo){
-                    od.entry = _candles[_index].close();
-                    _fill(od);
-                }//od.counter > 0 is important to prevent limit orders from executing immediately they are placed. DON'T TOUCH
-                else if (od.counter > 0 && (_candles[_index].high() >= od.entry && od.direction == Direction::sell || _candles[_index].low() <= od.entry && od.direction == Direction::buy)){
-                    //This block is for handling limit orders, not obvious. This is because there can only be two orders mo and limit
-                    _fill(od); 
-                }
-                if (od.counter > od.cancel_after) od.cancelled = true;
+        while (!_buy_limit.empty()){
+            if (_candles[_index].low() <= _buy_limit.top().entry){
+                if (_index - _buy_limit.top().entry_id <= _buy_limit.top().cancel_after) _fill(_buy_limit.top());
+                _buy_limit.pop();
             }
-            if (od.counter != SIZE_MAX)od.counter++;
+            else break;
+        }
+        while (!_sell_limit.empty()){
+            if (_candles[_index].high() >= _sell_limit.top().entry){
+                if (_index - _sell_limit.top().entry_id <= _sell_limit.top().cancel_after) _fill(_sell_limit.top());
+                _sell_limit.pop();
+            }
+            else break;
         }
     }
     
@@ -259,7 +267,8 @@ private:
     void _reset(){
         _index = 0;
         _trades = {};
-        _orders = {};
+        _buy_limit = {};
+        _sell_limit = {};
         _long_wins = 0, _short_wins = 0, _longs = 0, _shorts = 0, _n_trades = 0;
         _max_loss_in_a_row = 0, _max_win_in_a_row = 0;
         _rr = 0, _max_dd = 0; 
