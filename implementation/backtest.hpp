@@ -95,14 +95,14 @@ public:
         std::ios cout_state(nullptr);
         cout_state.copyfmt(std::cout); // To reset the console later
         std::cout << std::setprecision(4);
-        std::cout << "winrate : " << ((_n_trades > 0 )? (double) (_short_wins+_long_wins)/_n_trades : 0)<< "\tnumber of trades : " 
+        std::cout << "winrate : " << ((_n_trades > 0 ? (double) (_short_wins+_long_wins)/_n_trades : 0) *100)<< "%\tnumber of trades : " 
         << _n_trades << "\nmax loss in a row : " << _max_loss_in_a_row  << "\tmax win in a row : " << _max_win_in_a_row 
-        <<"\nmax drawdown : " << _max_dd  << "\tmax drawdown (duration) : " << _max_dd_duration << " candles"
+        <<"\nmax drawdown : " << _max_dd*100  << "%\tmax drawdown (duration) : " << _max_dd_duration << " candles"
         << "\nlongs : " << _longs << "\t\tshorts : " << _shorts 
-        << "\nlongs winrate : " << (_longs > 0? ((double) _long_wins)/ _longs : 0) << "\tshorts winrate : " 
-        << (_shorts > 0 ? ((double) _short_wins)/ _shorts : 0) 
-        << "\nsignal rate : " << (_candles.size() > 0 ? ((double)_n_trades)/ _candles.size() : 0) << "\treturns : " 
-        << _returns << "\n" << "time taken : " << _time_taken << "s\tnumber of candles : " << _candles.size() << "\n";
+        << "\nlongs winrate : " << ((_longs > 0? ((double) _long_wins)/ _longs : 0)*100) << "%\tshorts winrate : " 
+        << (_shorts > 0 ? ((double) _short_wins)/ _shorts : 0) *100
+        << "%\nsignal rate : " << (_candles.size() > 0 ? ((double)_n_trades)/ _candles.size() : 0)*100 << "%\treturns : " 
+        << _returns*100 << "%\n" << "time taken : " << _time_taken << "s\tnumber of candles : " << _candles.size() << "\n";
         std::cout.copyfmt(cout_state);
     }
     
