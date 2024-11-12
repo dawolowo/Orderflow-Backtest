@@ -66,9 +66,14 @@ public:
     @param source where it should be applied to i.e (close, open, high, low) of the candle. Default is close.
     @return Name of the indicator
     */
-    const char *apply_sma(size_t length, Source source = Source::close){      
-        std::string name = "sma_" + std::to_string(length);
-        const char *f = name.c_str();
+    std::string apply_sma(size_t length, Source source = Source::close){   
+        std::string pre;
+        if (Source::close == source) pre = "close";
+        else if (Source::open == source) pre = "open";
+        else if (Source::high == source) pre = "high";
+        else if (Source::low == source) pre = "low";
+        std::string name = "sma_" + pre + "_" + std::to_string(length);
+        // const char *f = name.c_str();
         double sum = 0;
         size_t n = 1, rebalance = 0;
         for (size_t i = 0; i < _candles.size(); i++){
@@ -78,30 +83,35 @@ public:
                 sum -= _select(_candles[rebalance], source);
                 rebalance++;
             }
-            _indicators[f].push_back(sum/n);
+            _indicators[name].push_back(sum/n);
             if (n < length) n++;
         }
-        return f;
+        return name;
     }
 
     /*Applies standard deviation indicator to the chart. 
     @param length period of the indicator e.g 14-period
     @param source where it should be applied to i.e (close, open, high, low) of the candle. Default is close.
     @return Name of the indicator*/
-    const char *apply_std(size_t length, Source source = Source::close){
-        const char *sma = apply_sma(length, source);
-        std::string name = "std" + std::to_string(length);
+    std::string apply_std(size_t length, Source source = Source::close){
+        std::string sma = apply_sma(length, source);
+        std::string pre;
+        if (Source::close == source) pre = "close";
+        else if (Source::open == source) pre = "open";
+        else if (Source::high == source) pre = "high";
+        else if (Source::low == source) pre = "low";
+        std::string name = "sma_" + pre + "_" + std::to_string(length);
         const char *f = name.c_str();
         size_t n = 1, rebalance = 0;
         for (size_t i = 0; i < size(); i++){
             double temp = 0; // temp = ∑(x- x̄)²
             for (size_t j = rebalance; j < n+rebalance; j++)
                 temp += pow(_select(_candles[j], source) - select_indicator(sma)[i], 2); // (x- x̄)²
-            _indicators[f].push_back(sqrt(temp/n));
+            _indicators[name].push_back(sqrt(temp/n));
             if (n < length) n++;
             else rebalance++;
         }
-        return f;
+        return name;
     }
 
     /* Applies your custom indicator to the chart
@@ -128,7 +138,7 @@ public:
     @return Data of the indicator selected
     @param name name of the indicator
     */
-    const std::vector<Price> &select_indicator(const char *name){
+    const std::vector<Price> &select_indicator(std::string name){
         if (_indicators.find(name) == _indicators.end()) throw std::logic_error("cause = select_indicator() : Indicator does not exist\n");
         return _indicators[name];
     }
@@ -140,14 +150,15 @@ public:
 
 private:
     std::vector<CandleStick> _candles;
-    std::map<const char *, std::vector<Price>> _indicators;
+    std::map<std::string, std::vector<Price>> _indicators;
 
     /*@return Data corresponding to source*/
     Price _select(const CandleStick &x, const Source &source){        
         if (source == Source::open) return x.open();
         else if (source == Source::high) return x.high();
         else if (source == Source::low) return x.low();
-        else return x.close();
+        else if (source == Source::close) return x.close();
+        return 0;
     }
 };
 
