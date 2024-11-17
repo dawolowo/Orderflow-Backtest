@@ -68,6 +68,14 @@ namespace levels{
         
     }
 
+    inline void __write__(std::fstream &out, Price &open, Price &high, Price &low, Price &close, time_t &time, std::map<Price, Level, std::greater<Price>> &footprint){
+        out << open << ' ' << high << ' ' << low << ' ' << close << ' ' << time << ' ' << footprint.size();
+        for (auto &p : footprint){
+            out << ' ' << p.second;
+        }
+        out << '\n';
+    }
+
     inline size_t __agg__(const char *path, const std::vector<const char *> &column_names, const char *store_path, std::vector<CandleStick> &candles,
             const Price price_level_interval, const int time_interval, bool store, bool spot){
         
@@ -91,7 +99,7 @@ namespace levels{
             data::stream_file(column_names.size(), row);
             if (data::file_in.eof()){
                 if (store){
-                    file << CandleStick(open, high, low, close, timestamp, footprint) << '\n';
+                    __write__(file, open, high, low, close, timestamp, footprint);
                 }
                 else candles.push_back(CandleStick(open, high, low, close, timestamp, footprint));
                 break;
@@ -104,7 +112,7 @@ namespace levels{
             }
             if (!within_interval(prev_time, curr_time, time_interval)){
                 if (store){
-                    file << CandleStick(open, high, low, close, timestamp, footprint) << '\n';
+                    __write__(file, open, high, low, close, timestamp, footprint);
                 }
                 else candles.push_back(CandleStick(open, high, low, close, timestamp, footprint));
                 footprint = {};
