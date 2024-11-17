@@ -13,6 +13,7 @@ Footprint = a candlestick that contains traded bid and ask volume at various pri
 
 namespace levels{
     const char *price_column = "price", *qty_column = "qty", *time_column = "time", *is_buyer_maker_column = "bim";
+    size_t price_id = 1, qty_id = 2, time_id = 4, is_buyer_maker_id = 5;
 
     /*@brief Checks if two time are within the same time interval.
     @param x first time
@@ -32,20 +33,42 @@ namespace levels{
     @param price_interval price interval between each price level. It determines each price level of the footprint
     */
     inline void set_price_level(std::map<Price, Level, std::greater<Price>> &footprint, std::unordered_map<const char *, std::string> &row,
-             const Price price_interval){
+             const Price &price_interval){
         
         Price price = stod(row[price_column]);
         Quantity quantity = stod(row[qty_column]);
-        bool bid = (row[is_buyer_maker_column][0] == 'F' || row[is_buyer_maker_column][0] == 'f');
+        bool bid = row[is_buyer_maker_column][0] == 'F' || row[is_buyer_maker_column][0] == 'f';
         Price rem = price/price_interval - (int)(price/price_interval);
         Price level = (price/price_interval - rem) * price_interval;
         level += price_interval; // to make the price level upper bound
         footprint[level].price = level;
         if (bid) footprint[level].bids += quantity;
         else footprint[level].asks += quantity;
+        
     }
-    
-    size_t __agg__(const char *path, const std::vector<const char *> &column_names, const char *store_path, std::vector<CandleStick> &candles,
+
+    /*@brief Fills footprint parameter with the necessary information about the price level such as bid, ask.
+    @param footprint map containing the footprint information
+    @param row unordered map containing the row that was read
+    @param price_interval price interval between each price level. It determines each price level of the footprint
+    */
+    inline void set_price_level(std::map<Price, Level, std::greater<Price>> &footprint, std::vector<std::string> &row,
+             const Price &price_interval){
+        
+        Price price = stod(row[price_id]);
+        Quantity quantity = stod(row[qty_id]);
+        bool bid = row[is_buyer_maker_id][0] == 'F' || row[is_buyer_maker_id][0] == 'f';
+        Price rem = price/price_interval - (int)(price/price_interval);
+        Price level = (price/price_interval - rem) * price_interval;
+        level += price_interval; // to make the price level upper bound
+        Level &x = footprint[level];
+        x.price = level;
+        if (bid) x.bids += quantity;
+        else x.asks += quantity;
+        
+    }
+
+    inline size_t __agg__(const char *path, const std::vector<const char *> &column_names, const char *store_path, std::vector<CandleStick> &candles,
             const Price price_level_interval, const int time_interval, bool store, bool spot){
         
         data::open_file(path);
@@ -63,19 +86,18 @@ namespace levels{
         std::map<Price, Level, std::greater<Price>> footprint;
         std::fstream file;
         if (store) file.open(store_path, std::ios::out);
+        std::vector<std::string> row(column_names.size());
         while (true){
-            std::unordered_map<const char *, std::string> row;
-            data::stream_file(column_names, row);
-            
-            if (row.empty()){
+            data::stream_file(column_names.size(), row);
+            if (data::file_in.eof()){
                 if (store){
                     file << CandleStick(open, high, low, close, timestamp, footprint) << '\n';
                 }
                 else candles.push_back(CandleStick(open, high, low, close, timestamp, footprint));
                 break;
             }
-            time_t curr_time = stoll(row[time_column]);
-            Price t_price = stod(row[price_column]);
+            time_t curr_time = stoll(row[time_id]);
+            Price t_price = stod(row[price_id]);
             if (no_of_lines == 1){
                 high = low = open = t_price;
                 prev_time = timestamp = curr_time;
@@ -85,7 +107,7 @@ namespace levels{
                     file << CandleStick(open, high, low, close, timestamp, footprint) << '\n';
                 }
                 else candles.push_back(CandleStick(open, high, low, close, timestamp, footprint));
-                footprint.clear();
+                footprint = {};
                 low = open = high = t_price;
                 timestamp = curr_time;
             }
