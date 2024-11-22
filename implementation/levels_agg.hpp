@@ -10,9 +10,9 @@ Footprint = a candlestick that contains traded bid and ask volume at various pri
 #include "data.hpp"
 #include "level_info.hpp"
 #include "candlestick.hpp"
+#include <thread>
 
 namespace levels{
-    const char *price_column = "price", *qty_column = "qty", *time_column = "time", *is_buyer_maker_column = "bim";
     size_t price_id = 1, qty_id = 2, time_id = 4, is_buyer_maker_id = 5;
 
     /*@brief Checks if two time are within the same time interval.
@@ -26,33 +26,13 @@ namespace levels{
         y /= 1000;        
         return x/interval == y/interval;
     }
-    
-    /*@brief Fills footprint parameter with the necessary information about the price level such as bid, ask.
-    @param footprint map containing the footprint information
-    @param row unordered map containing the row that was read
-    @param price_interval price interval between each price level. It determines each price level of the footprint
-    */
-    inline void set_price_level(std::map<Price, Level, std::greater<Price>> &footprint, std::unordered_map<const char *, std::string> &row,
-             const Price &price_interval){
-        
-        Price price = stod(row[price_column]);
-        Quantity quantity = stod(row[qty_column]);
-        bool bid = row[is_buyer_maker_column][0] == 'F' || row[is_buyer_maker_column][0] == 'f';
-        Price rem = price/price_interval - (int)(price/price_interval);
-        Price level = (price/price_interval - rem) * price_interval;
-        level += price_interval; // to make the price level upper bound
-        footprint[level].price = level;
-        if (bid) footprint[level].bids += quantity;
-        else footprint[level].asks += quantity;
-        
-    }
 
     /*@brief Fills footprint parameter with the necessary information about the price level such as bid, ask.
     @param footprint map containing the footprint information
     @param row unordered map containing the row that was read
     @param price_interval price interval between each price level. It determines each price level of the footprint
     */
-    inline void set_price_level(std::map<Price, Level, std::greater<Price>> &footprint, std::vector<std::string> &row,
+    inline void __set_price_level__(std::map<Price, Level, std::greater<Price>> &footprint, std::vector<std::string> &row,
              const Price &price_interval){
         
         Price price = stod(row[price_id]);
@@ -76,10 +56,25 @@ namespace levels{
         out << '\n';
     }
 
-    inline size_t __agg__(const char *path, const std::vector<const char *> &column_names, const char *store_path, std::vector<CandleStick> &candles,
-            const Price price_level_interval, const int time_interval, bool store, bool spot){
+    //Separates the line by ','
+    inline void __split__(std::vector<std::string> &row, const std::string &line){
+        size_t n = 0;
+        row[n] = "";
+        for (const char &x : line){
+            if (x == ','&& n+1 < row.size()){
+                row[++n] = "";
+            }
+            else if (x == ',') n++;
+            else if (n < row.size()) row[n] += x;
+            else break;
+        }
+    }
+
+
+    inline size_t __agg__(const char *path, size_t no_cols, const char *store_path, std::vector<CandleStick> &candles,
+            const Price price_level_interval, const int time_interval, const bool store, const bool spot){
         
-        data::open_file(path);
+        data::file_in.open_except(path, std::ios::in);
         size_t no_of_lines = 1;
         // The next two lines are not needed if the data is binance spot. The first row is of binance futures data is column names
         if (!spot){
@@ -92,18 +87,20 @@ namespace levels{
         Price high, low, close, open;
         time_t timestamp, prev_time ;
         std::map<Price, Level, std::greater<Price>> footprint;
-        std::fstream file;
-        if (store) file.open(store_path, std::ios::out);
-        std::vector<std::string> row(column_names.size());
+        data::File file_out;
+        if (store) file_out.open_except(store_path, std::ios::out);
+        std::vector<std::string> row(no_cols);
+        
         while (true){
-            data::stream_file(column_names.size(), row);
+            data::stream_file(no_cols, row);
             if (data::file_in.eof()){
                 if (store){
-                    __write__(file, open, high, low, close, timestamp, footprint);
+                    __write__(file_out, open, high, low, close, timestamp, footprint);
                 }
                 else candles.push_back(CandleStick(open, high, low, close, timestamp, footprint));
                 break;
             }
+
             time_t curr_time = stoll(row[time_id]);
             Price t_price = stod(row[price_id]);
             if (no_of_lines == 1){
@@ -112,56 +109,153 @@ namespace levels{
             }
             if (!within_interval(prev_time, curr_time, time_interval)){
                 if (store){
-                    __write__(file, open, high, low, close, timestamp, footprint);
+                    __write__(file_out, open, high, low, close, timestamp, footprint);
                 }
                 else candles.push_back(CandleStick(open, high, low, close, timestamp, footprint));
                 footprint = {};
                 low = open = high = t_price;
                 timestamp = curr_time;
             }
-            set_price_level(footprint, row, price_level_interval);
+            __set_price_level__(footprint, row, price_level_interval);
             high = (high > t_price) ? high : t_price;
             low = (low < t_price) ? low  : t_price;
             close = t_price;
             prev_time = curr_time;
             no_of_lines++;
         }
-        if (store) file.close();
-        data::close_file();
+        return no_of_lines;
+    }
+    
+    inline size_t __tagg__(const char *path, size_t no_cols, const char *store_path, std::vector<CandleStick> &candles,
+            const Price price_level_interval, const int time_interval, const bool store, const bool spot){
+        
+        data::file_in.open_except(path, std::ios::in);
+        size_t no_of_lines = 1;
+        // The next two lines are not needed if the data is binance spot. The first row is of binance futures data is column names
+        if (!spot){
+            std::string _;
+            data::file_in >> _;
+            char __;
+            data::file_in.get(__); // This line is important to get rid of the \n character. FIXED BUG
+        }        
+
+        Price high, low, close, open;
+        time_t timestamp, prev_time ;
+        std::map<Price, Level, std::greater<Price>> footprint;
+        data::File file_out;
+        if (store) file_out.open_except(store_path, std::ios::out);
+        std::vector<std::string> row(no_cols);
+        std::queue<std::string> buffer;
+        std::mutex buff_mutex;
+        std::thread worker(data::thread_stream, std::ref(buff_mutex), std::ref(buffer));
+        
+        while (true){
+            if (data::file_in.eof() && buffer.empty()){
+                if (store){
+                    __write__(file_out, open, high, low, close, timestamp, footprint);
+                }
+                else candles.push_back(CandleStick(open, high, low, close, timestamp, footprint));
+                break;
+            }
+            if (buffer.empty()) continue;
+            {
+                std::lock_guard<std::mutex> lock(buff_mutex);
+                __split__(row, buffer.front());
+                buffer.pop();
+            }
+
+            time_t curr_time = stoll(row[time_id]);
+            Price t_price = stod(row[price_id]);
+            if (no_of_lines == 1){
+                high = low = open = t_price;
+                prev_time = timestamp = curr_time;
+            }
+            if (!within_interval(prev_time, curr_time, time_interval)){
+                if (store){
+                    __write__(file_out, open, high, low, close, timestamp, footprint);
+                }
+                else candles.push_back(CandleStick(open, high, low, close, timestamp, footprint));
+                footprint = {};
+                low = open = high = t_price;
+                timestamp = curr_time;
+            }
+            __set_price_level__(footprint, row, price_level_interval);
+            high = (high > t_price) ? high : t_price;
+            low = (low < t_price) ? low  : t_price;
+            close = t_price;
+            prev_time = curr_time;
+            no_of_lines++;
+        }
+        worker.join();
         return no_of_lines;
     }
 
+
     /*@brief Aggregates the data and fills the candles parameter with the candlestick.
     @param path location of the file to be read from
-    @param column_names names of all columns in the csv. The names would be used to store and access data in the map
-    @param candles vector that will contain the candlesticks
+    @param no_cols number of columns in the csv file    @param candles vector that will contain the candlesticks
     @param price_level_interval the price difference between each price level. It determines each price level of the footprint
     @param time_interval time interval (in seconds)
     @param is_spot set to true if the data is binance spot data. Default is false.
     @return number of lines read
     */
-    size_t agg(const char *path, const std::vector<const char *> &column_names, std::vector<CandleStick> &candles,
+    size_t agg(const char *path, size_t no_cols, std::vector<CandleStick> &candles,
             const Price price_level_interval, const int time_interval, bool is_spot = false){
         
-        return __agg__(path, column_names, "", candles, price_level_interval, time_interval, false, is_spot);        
+        return __agg__(path, no_cols, "", candles, price_level_interval, time_interval, false, is_spot);        
     }
 
     /*@brief Aggregates the data and stores it in the location of store_path.
     @param path location of the file
-    @param column_names names of all columns in the csv. The names would be used to store and access data in the map
+    @param no_cols number of columns in the csv file
     @param store_path location of the text file that will contain the aggregated data
     @param price_level_interval the price difference between each price level. It determines each price level of the footprint
     @param time_interval time interval (in seconds)
     @param is_spot set to true if the data is binance spot data. Default is false.
     @return number of lines read
     */
-    size_t agg_store(const char *path, const std::vector<const char *> &column_names, const char *store_path,
+    size_t agg_store(const char *path, size_t no_cols, const char *store_path,
             const Price price_level_interval, const int time_interval, bool is_spot = false){
         
         std::vector<CandleStick> candles;
-        return __agg__(path, column_names, store_path, candles, price_level_interval, time_interval, true, is_spot);
+        return __agg__(path, no_cols, store_path, candles, price_level_interval, time_interval, true, is_spot);
     }
 
+    /*@brief Aggregates the data and fills the candles parameter with the candlestick.
+    
+    Uses multithreading to make it faster but at the cost of RAM usage. To set the RAM usage check data::MAX_RAM_USE
+    @param path location of the file to be read from
+    @param no_cols number of columns in the csv file    @param candles vector that will contain the candlesticks
+    @param price_level_interval the price difference between each price level. It determines each price level of the footprint
+    @param time_interval time interval (in seconds)
+    @param is_spot set to true if the data is binance spot data. Default is false.
+    @return number of lines read
+    @note Do not compile with -O2 or -O3 flag
+    */
+    size_t agg_thread(const char *path, size_t no_cols, std::vector<CandleStick> &candles,
+            const Price price_level_interval, const int time_interval, bool is_spot = false){
+        
+        return __tagg__(path, no_cols, "", candles, price_level_interval, time_interval, false, is_spot);        
+    }
+
+    /*@brief Aggregates the data and stores it in the location of store_path.
+    
+    Uses multithreading to make it faster but at the cost of RAM usage. To set the RAM usage check data::MAX_RAM_USE
+    @param path location of the file
+    @param no_cols number of columns in the csv file
+    @param store_path location of the text file that will contain the aggregated data
+    @param price_level_interval the price difference between each price level. It determines each price level of the footprint
+    @param time_interval time interval (in seconds)
+    @param is_spot set to true if the data is binance spot data. Default is false.
+    @return number of lines read
+    @note Do not compile with -O2 or -O3 flag
+    */
+    size_t agg_store_thread(const char *path, size_t no_cols, const char *store_path,
+            const Price price_level_interval, const int time_interval, bool is_spot = false){
+        
+        std::vector<CandleStick> candles;
+        return __tagg__(path, no_cols, store_path, candles, price_level_interval, time_interval, true, is_spot);
+    }
 }
 
 #endif
