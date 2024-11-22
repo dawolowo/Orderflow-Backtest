@@ -1,12 +1,10 @@
 /*
  This is file contains code necessary to read time and sales data specifically from binance. 
 */
-#ifndef DATA_HPP
-#define DATA_HPP
+#pragma once
 
 #include "defs.hpp"
-#include <queue>
-#include <mutex>
+#include "atomicqueue.hpp"
 #include <chrono>
 #include <thread>
 
@@ -59,20 +57,16 @@ namespace data{
         }
 
     }
-    
-    void thread_stream(std::mutex &buff_mutex, std::queue<std::string> &buffer){
+
+    void thread_stream(AtomicQueue<std::string> &buffer){
         std::string line;
         char _;
         while (!file_in.eof()){
             file_in >> line;
             file_in.get(_);
-            {
-                std::lock_guard<std::mutex>lock(buff_mutex);
-                buffer.push(line);
-            }
+            buffer.push(line);
             if (line.capacity()*buffer.size() > MAX_RAM_USE) std::this_thread::sleep_for(std::chrono::milliseconds(100));
         }
-    }
+    }    
 }
 
-#endif
