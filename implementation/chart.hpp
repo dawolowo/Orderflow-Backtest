@@ -101,7 +101,6 @@ public:
         else if (Source::high == source) pre = "high";
         else if (Source::low == source) pre = "low";
         std::string name = "sma_" + pre + "_" + std::to_string(length);
-        const char *f = name.c_str();
         size_t n = 1, rebalance = 0;
         for (size_t i = 0; i < size(); i++){
             double temp = 0; // temp = ∑(x- x̄)²
