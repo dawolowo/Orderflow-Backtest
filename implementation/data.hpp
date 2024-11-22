@@ -5,18 +5,38 @@
 #define DATA_HPP
 
 #include "defs.hpp"
+#include <queue>
+#include <mutex>
+#include <chrono>
+#include <thread>
 
 namespace data{
-    std::fstream file_in;
-   
-    inline void open_file(const char *path){
-        file_in.open(path, std::ios::in);
-        if (!file_in.is_open()) throw std::logic_error("cause = data::open_file() : File was not opened\n");
-    }
+    /*Class inheriting from std::fstream and incorporating RAII.
+    */
+    class File : public std::fstream{
+    public:
+        File() = default;
 
-    inline void close_file(){ 
-        file_in.close();
-    }
+        ~File(){close();}
+
+        /*
+        Opens an external file, Raises an exception if not opened.
+
+        @param __s The name of the file.
+        @param __mode The open mode flags.
+
+        Calls std::basic_filebuf::open(__s,__mode). If that function fails, failbit is set in the stream's error state.
+        */
+        void open_except(const char *__s, std::ios_base::openmode __mode) {
+            open(__s, __mode);
+            if (!is_open()) throw std::logic_error("cause = File::open_except() : No such file\n");
+        }
+    };
+   
+    File file_in;
+    
+    //Limits the ram usage. The size is in bytes
+    const size_t MAX_RAM_USE = 1000*1024*1024;
 
     /*streams a csv file and fills the row parameter with the content. Reads a single row.
     @param ncol number of columns to read
@@ -27,31 +47,30 @@ namespace data{
         size_t n = 0;
         row[0] = "";
         while (file_in.get(x)){
-            if (x == '\n') break;
+            if (x == '\n') {
+                // end = true;
+                break;
+            }
             if (x == ',' && n+1 < ncol){
                 row[++n] = "";
             }
+            else if (x == ',')n++;
             else if (n < ncol) row[n] += x;
         }
+
     }
     
-    /*streams a csv file and fills the row parameter with the content. Reads a single line.
-    @param cols vector containing the column names
-    @param row unordered map that will be filled with the read row of the csv file. Its key contains the column names 
-    and value contains data
-    */
-    inline void stream_file(const std::vector<const char *> &cols, std::unordered_map<const char *, std::string> &row){
-        size_t n = 0;
-        char x;
-        row[cols[n]] = "";
-        while (file_in.get(x)){
-            if (x == '\n') break;
-            if (x == ',' ) {
-                row[cols[++n]] = "";
+    void thread_stream(std::mutex &buff_mutex, std::queue<std::string> &buffer){
+        std::string line;
+        char _;
+        while (!file_in.eof()){
+            file_in >> line;
+            file_in.get(_);
+            {
+                std::lock_guard<std::mutex>lock(buff_mutex);
+                buffer.push(line);
             }
-            else if (n < cols.size()){
-                row[cols[n]] += x;
-            }
+            if (line.capacity()*buffer.size() > MAX_RAM_USE) std::this_thread::sleep_for(std::chrono::milliseconds(100));
         }
     }
 }
