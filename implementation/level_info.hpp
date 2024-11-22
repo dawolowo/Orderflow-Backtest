@@ -16,7 +16,7 @@ struct Level{
     bool buy_imbalance(double ratio) const {
         return bids > ratio * asks;
     }
-
+    
     // Checks for sell imbalance
     bool sell_imbalance(double ratio) const{
         return asks > ratio * bids;
@@ -24,7 +24,11 @@ struct Level{
     
     Level operator+(const Level &operand){
         if (price != operand.price) throw std::logic_error("operator+ error : Cannot add levels with different price\n");
-        return Level(price, bids+operand.bids, asks+operand.asks);
+        Level ret;
+        ret.price = price;
+        ret.bids = bids+operand.bids;
+        ret.asks = asks+operand.asks;
+        return ret;
     }
     
     friend std::ostream &operator<<(std::ostream &out, Level &obj){
