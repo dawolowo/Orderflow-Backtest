@@ -4,16 +4,16 @@
 using namespace std;
 
 int main(){
-    const char *file_path = ".csv"; // location of time and sales data
-    const char *store_path = ".txt"; // where you want to store the aggregated data
+    const char *file_path = "{path}.csv"; // location of time and sales data
+    const char *store_path = "{path}.txt"; // where you want to store the aggregated data
 
-    vector<const char *> cols = {"id", "price", "qty", "quote_qty", "time", "bim"}; // column names as gotten from binance
-    /*cols should be left as it is. But if you want to change cols maybe to use with other data source
-    make sure to change the following to correspond with the names in cols (by default it is)
-    levels::price_column;
-    levels::qty_column;
-    levels::time_column;
-    levels::is_buyer_maker_column;
+    size_t cols = 6; //colums = {"id", "price", "qty", "quote_qty", "time", "bim"} column names as gotten from binance
+    /*If you want to use with other data source make sure to change the indexes to correspond with the respective columns. i.e
+    levels::price_id;
+    levels::qty_id;
+    levels::time_id;
+    levels::is_buyer_maker_id;
+    Index starts from zero
     */
    
     int price_interval = 3; // difference in footprint price levels
@@ -24,27 +24,39 @@ int main(){
     size_t line = levels::agg(file_path, cols, candles, price_interval, time_interval, false); // aggregating futures data
     size_t line2 = levels::agg(file_path, cols, candles, price_interval, time_interval, true); // aggregating spot data
 
-    /*Aggregating and storing in a text file. This is recommended as you only aggregate once. Aggregating a 14 gb file on
-    my system takes about 40 minutes while loading takes about 9 secs.
+    
+    /*Aggregating and storing in a vector of candlestick with multithreading.Faster but uses large memory
+    When using this, you can change data::MAX_RAM_USE to set the RAM usage according to your requirement. Default is 1000 MB
+    */
+    size_t line7 = levels::agg_thread(file_path, cols, candles, price_interval, time_interval, false); // aggregating futures data
+    size_t line8 = levels::agg_thread(file_path, cols, candles, price_interval, time_interval, true); // aggregating spot data
+
+
+    /*Aggregating and storing in a text file. This is recommended as you only aggregate once.
     */
     size_t line3 = levels::agg_store(file_path, cols, store_path, price_interval, time_interval, false); // aggregating futures data
     size_t line4 = levels::agg_store(file_path, cols, store_path, price_interval, time_interval, true); // aggregating spot data
+
+    
+    /*Aggregating and storing in a text file with multithreading. Faster but uses large memory
+    When using this, you can change data::MAX_RAM_USE to set the RAM usage according to your requirement. Default is 1000 MB
+    */
+    size_t line5 = levels::agg_store_thread(file_path, cols, store_path, price_interval, time_interval, false); // aggregating futures data
+    size_t line6 = levels::agg_store_thread(file_path, cols, store_path, price_interval, time_interval, true); // aggregating spot data
 
     // loading the aggergated text file into chart object
     Chart chart;
     chart.load(store_path);
 
     // loading the aggregated text file into vector of candles
-    fstream file;
-    file.open(store_path);
-    if (!file) throw logic_error("File not opened.\ncause: Incorrect file path or file does not exist");
+    data::File file;
+    file.open_except(store_path, ios::in);
     while (1){
         CandleStick temp;
         file >> temp;
         if (file.eof()) break;
         candles.push_back(temp);
     }
-    file.close();
 
     return 0;
 }
