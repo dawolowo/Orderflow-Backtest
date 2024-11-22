@@ -3,9 +3,8 @@ This file contains code to aggregrate time and sales data specifically from bina
 Aggregrate in this case means to restructure the data like a footprint chart
 Footprint = a candlestick that contains traded bid and ask volume at various price intervals
 */
+#pragma once
 
-#ifndef LEVELS_AGG_HPP
-#define LEVELS_AGG_HPP
 #include "defs.hpp"
 #include "data.hpp"
 #include "level_info.hpp"
@@ -145,9 +144,8 @@ namespace levels{
         data::File file_out;
         if (store) file_out.open_except(store_path, std::ios::out);
         std::vector<std::string> row(no_cols);
-        std::queue<std::string> buffer;
-        std::mutex buff_mutex;
-        std::thread worker(data::thread_stream, std::ref(buff_mutex), std::ref(buffer));
+        AtomicQueue<std::string> buffer;        
+        std::thread worker(data::thread_stream, std::ref(buffer));
         
         while (true){
             if (data::file_in.eof() && buffer.empty()){
@@ -158,11 +156,8 @@ namespace levels{
                 break;
             }
             if (buffer.empty()) continue;
-            {
-                std::lock_guard<std::mutex> lock(buff_mutex);
-                __split__(row, buffer.front());
-                buffer.pop();
-            }
+            __split__(row, buffer.front());
+            buffer.pop();
 
             time_t curr_time = stoll(row[time_id]);
             Price t_price = stod(row[price_id]);
@@ -230,7 +225,6 @@ namespace levels{
     @param time_interval time interval (in seconds)
     @param is_spot set to true if the data is binance spot data. Default is false.
     @return number of lines read
-    @note Do not compile with -O2 or -O3 flag
     */
     size_t agg_thread(const char *path, size_t no_cols, std::vector<CandleStick> &candles,
             const Price price_level_interval, const int time_interval, bool is_spot = false){
@@ -248,7 +242,6 @@ namespace levels{
     @param time_interval time interval (in seconds)
     @param is_spot set to true if the data is binance spot data. Default is false.
     @return number of lines read
-    @note Do not compile with -O2 or -O3 flag
     */
     size_t agg_store_thread(const char *path, size_t no_cols, const char *store_path,
             const Price price_level_interval, const int time_interval, bool is_spot = false){
@@ -257,5 +250,3 @@ namespace levels{
         return __tagg__(path, no_cols, store_path, candles, price_level_interval, time_interval, true, is_spot);
     }
 }
-
-#endif
