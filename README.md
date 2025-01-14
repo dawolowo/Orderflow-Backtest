@@ -1,5 +1,5 @@
 # About
-This is project is for algorithmic traders with knowledge of c++ who wants to backtest trading strategies. It is capable of backtesting price action, indicator and orderflow based strategies. It can also be used to aggregrate time and sales data (SEE `levels_agg.hpp` file)
+This is a collection of tools I developed for myself and can be used by algorithmic traders with knowledge of c++ who wants to backtest trading strategies. It is capable of backtesting price action, indicator and orderflow based strategies. It can also be used to aggregrate time and sales data (SEE `levels_agg.hpp` file)
 
 By default it works with binance time and sales data gotten from: https://data.binance.vision but it can tweaked to work with data from other sources (check `loading_file.cpp` in `usage` folder to see how).
 
@@ -8,7 +8,7 @@ Details of files in ```implementation```:
 * `atomicqueue.hpp`: contains implementation of a queue that is thread safe.
 * `backtest.hpp`: contains the backtest engine.
 * `candlestick.hpp`: contains the `CandleStick` class. `CandleStick` is a structural representation of a realife candlestick.
-* `chart.hpp`: contains the `Chart` class. `Chart` is a collection of `CandleStick` with additional functions.
+* `chart.hpp`: contains the `Chart` class. `Chart` is a collection of `CandleStick` with additional functions like adding indicators.
 * `data.hpp`: defines function to read a file.
 * `level_info.hpp`: contains a struct that stores information on a price level.
 * `levels_agg.hpp`: defines function to aggregrate time and sales data.
