@@ -7,7 +7,7 @@
 using namespace std;
 
 /*
-This speed test uses a popular trading strategy called orderblocks. ob is function that contains the algorithm to detect an orderblock
+This speed test uses a popular trading strategy called orderblocks. The detection and trading of orderblocks is contained in ob
 */
 
 stack<Swing> swing_highs, swing_lows;
@@ -23,9 +23,14 @@ void detect_swing(BackTest &self){
         }
     }
 }
+/*
+ob is function that contains the algorithm to detect an orderblock. The strategy is to set a limit order at the entry of the orderblock after an orderblock is detected, 
+it cancels the order after 10 candles have passed.
+*/
 void ob(BackTest &);
 
 int main(){
+    //file_path should point to the location of the aggregated time and sales. SEE loading_file.cpp if you haven't
     const char *file_path = ".txt";
     Chart chart;
     time_t now = time(0);
@@ -38,7 +43,6 @@ int main(){
 }
 
 int bull_id, bear_id;
-// An orderblock strategy
 void ob(BackTest &self){
     detect_swing(self);
     CandleStick &x = self.candles()[self.index()];
