@@ -34,20 +34,19 @@ namespace levels{
     inline void __set_price_level__(std::map<Price, Level, std::greater<Price>> &footprint, std::vector<std::string> &row,
              const Price &price_interval){
         
-        Price price = stod(row[price_id]);
-        Quantity quantity = stod(row[qty_id]);
-        bool bid = row[is_buyer_maker_id][0] == 'F' || row[is_buyer_maker_id][0] == 'f';
-        Price rem = price/price_interval - (int)(price/price_interval);
-        Price level = (price/price_interval - rem) * price_interval;
-        level += price_interval; // to make the price level upper bound
+        Price price = stof(row[price_id]);
+        Quantity quantity = stof(row[qty_id]);
+        //is_bid represents if a trade is an aggressive buy/ passive sell. True if it's aggressive buy
+        bool is_bid = row[is_buyer_maker_id][0] == 'F' || row[is_buyer_maker_id][0] == 'f';
+        Price level = (int)(price/price_interval + 1) * price_interval; //Upper bounded level
         Level &x = footprint[level];
         x.price = level;
-        if (bid) x.bids += quantity;
+        if (is_bid) x.bids += quantity;
         else x.asks += quantity;
         
     }
 
-    inline void __write__(std::fstream &out, Price &open, Price &high, Price &low, Price &close, time_t &time, std::map<Price, Level, std::greater<Price>> &footprint){
+    inline void __write__(data::File &out, Price &open, Price &high, Price &low, Price &close, time_t &time, std::map<Price, Level, std::greater<Price>> &footprint){
         out << open << ' ' << high << ' ' << low << ' ' << close << ' ' << time << ' ' << footprint.size();
         for (auto &p : footprint){
             out << ' ' << p.second;
@@ -83,8 +82,8 @@ namespace levels{
             data::file_in.get(__); // This line is important to get rid of the \n character. FIXED BUG
         }        
 
-        Price high, low, close, open;
-        time_t timestamp, prev_time ;
+        Price high, low, close, open, t_price;
+        time_t timestamp, prev_time,curr_time ;
         std::map<Price, Level, std::greater<Price>> footprint;
         data::File file_out;
         if (store) file_out.open_except(store_path, std::ios::out);
@@ -96,12 +95,12 @@ namespace levels{
                 if (store){
                     __write__(file_out, open, high, low, close, timestamp, footprint);
                 }
-                else candles.push_back(CandleStick(open, high, low, close, timestamp, footprint));
+                else candles.emplace_back(open, high, low, close, timestamp, footprint);
                 break;
             }
 
-            time_t curr_time = stoll(row[time_id]);
-            Price t_price = stod(row[price_id]);
+            curr_time = stoll(row[time_id]);
+            t_price = stof(row[price_id]);
             if (no_of_lines == 1){
                 high = low = open = t_price;
                 prev_time = timestamp = curr_time;
@@ -110,7 +109,7 @@ namespace levels{
                 if (store){
                     __write__(file_out, open, high, low, close, timestamp, footprint);
                 }
-                else candles.push_back(CandleStick(open, high, low, close, timestamp, footprint));
+                else candles.emplace_back(open, high, low, close, timestamp, footprint);
                 footprint = {};
                 low = open = high = t_price;
                 timestamp = curr_time;
@@ -130,7 +129,7 @@ namespace levels{
         
         data::file_in.open_except(path, std::ios::in);
         size_t no_of_lines = 1;
-        // The next two lines are not needed if the data is binance spot. The first row is of binance futures data is column names
+        //  The first row is of binance futures data is column names so we it get rid of it
         if (!spot){
             std::string _;
             data::file_in >> _;
@@ -138,8 +137,8 @@ namespace levels{
             data::file_in.get(__); // This line is important to get rid of the \n character. FIXED BUG
         }        
 
-        Price high, low, close, open;
-        time_t timestamp, prev_time ;
+        Price high, low, close, open, t_price;
+        time_t timestamp, prev_time, curr_time ;
         std::map<Price, Level, std::greater<Price>> footprint;
         data::File file_out;
         if (store) file_out.open_except(store_path, std::ios::out);
@@ -152,15 +151,15 @@ namespace levels{
                 if (store){
                     __write__(file_out, open, high, low, close, timestamp, footprint);
                 }
-                else candles.push_back(CandleStick(open, high, low, close, timestamp, footprint));
+                else candles.emplace_back(open, high, low, close, timestamp, footprint);
                 break;
             }
             if (buffer.empty()) continue;
             __split__(row, buffer.front());
             buffer.pop();
 
-            time_t curr_time = stoll(row[time_id]);
-            Price t_price = stod(row[price_id]);
+            curr_time = stoll(row[time_id]);
+            t_price = stof(row[price_id]);
             if (no_of_lines == 1){
                 high = low = open = t_price;
                 prev_time = timestamp = curr_time;
@@ -169,7 +168,7 @@ namespace levels{
                 if (store){
                     __write__(file_out, open, high, low, close, timestamp, footprint);
                 }
-                else candles.push_back(CandleStick(open, high, low, close, timestamp, footprint));
+                else candles.emplace_back(open, high, low, close, timestamp, footprint);
                 footprint = {};
                 low = open = high = t_price;
                 timestamp = curr_time;
