@@ -3,11 +3,13 @@ This file contains necessary code that describes/ mimics a candlestick
 CandleStick = a replica object of a candlestick
 */
 
-#ifndef CANDLESTICK_HPP
-#define CANDLESTICK_HPP
+#pragma once
 
 #include "defs.hpp"
 #include "level_info.hpp"
+#include "market_profile.hpp"
+#include <utility>
+#include <memory>
 #include <limits>
 
 /*Object storing information about the candlestick
@@ -15,8 +17,9 @@ CandleStick = a replica object of a candlestick
 @param high high of the candle
 @param low low of the candle
 @param close close of the candle
-@time time open time of the candle
-@footprint footprint of the candle
+@param time open time of the candle
+@param footprint footprint of the candle
+@note The data in ```footprint``` is moved into the object. After the constructor call, ```footprint``` would be empty.
 */
 class CandleStick{
 public:
@@ -41,11 +44,13 @@ public:
         _low = low;
         _close = close;
         _time_stamp = time;
-        _footprint = footprint;
+        _footprint = std::move(footprint);
+        _profile = std::shared_ptr<Profile>(new Profile);
+        _contains_fp = true;
     }
     
     //@return opening time of the candle
-    time_t time_stamp() const { return _time_stamp;}
+    time_t timestamp() const { return _time_stamp;}
     
     //@return open of the candle
     Price open() const {return _open;}
@@ -60,92 +65,135 @@ public:
     Price low() const {return _low;}
     
     /*@return price with the highest volume*/
-    Price cot() {
-        if (!_is_set) _set_info();
-        return _cot;
+    Price cot(){
+        if (!_contains_fp) return -1;
+        if (!_set_profile) {
+            _profile->set_fp(_footprint);
+            _set_profile = true;
+        }
+        return _profile->cot();
     }
     
     //@return Price with the highest ask volume
     Price ask_cot(){
-        if (!_is_set)_set_info();
-        return _acot;
+        if (!_contains_fp) return -1;
+        if (!_set_profile) {
+            _profile->set_fp(_footprint);
+            _set_profile = true;
+        }
+        return _profile->ask_cot();
     }
     
     //@return Price with the highest bid volume
     Price bid_cot(){
-        if (!_is_set) _set_info();
-        return _bcot;
+        if (!_contains_fp) return -1;
+        if (!_set_profile) {
+            _profile->set_fp(_footprint);
+            _set_profile = true;
+        }
+        return _profile->bid_cot();
     }
     
     /*@return volume weighted price of the candlestick*/
-    Price vwap() {
-        if (!_is_set) _set_info();
-        return _vwap;
+    Price vwap(){
+        if (!_contains_fp) return -1;
+        if (!_set_profile) {
+            _profile->set_fp(_footprint);
+            _set_profile = true;
+        }
+        return _profile->vwap();
     }
     
     /*@return Value area high of the candlestick*/
     Price vah(){
-        if (_vah == -1) _value_area(percentage);
-        return _vah;
+        if (!_contains_fp) return -1;
+        if (!_set_profile) {
+            _profile->set_fp(_footprint);
+            _set_profile = true;
+        }
+        return _profile->vah();
     }
     
     /*@return value area low of the candlestick*/
     Price val(){
-        if (_val == -1) _value_area(percentage);
-        return _val;
+        if (!_contains_fp) return -1;
+        if (!_set_profile) {
+            _profile->set_fp(_footprint);
+            _set_profile = true;
+        }
+        return _profile->val();
     }
     
     //@return total ask volume
-    Quantity ask_vol() {
-        if (!_is_set) _set_info();
-        return _ask_vol;}
+    Quantity ask_vol(){
+        if (!_contains_fp) return -1;
+        if (!_set_profile) {
+            _profile->set_fp(_footprint);
+            _set_profile = true;
+        }
+        return _profile->ask_vol();
+    }
     
     //@return total bids volume
-    Quantity bid_vol() {
-        if (!_is_set) _set_info();
-        return _bid_vol;
+    Quantity bid_vol(){
+        if (!_contains_fp) return -1;
+        if (!_set_profile) {
+            _profile->set_fp(_footprint);
+            _set_profile = true;
+        }
+        return _profile->bid_vol();
     }
     
     //@return delta of the candle
-    Quantity delta() { 
+    Quantity delta(){ 
+        if (!_contains_fp) return -1;
         return bid_vol()- ask_vol(); 
     }
     
     //@return maximum delta in the candle
-    Quantity max_delta() {
-        if (!_is_set) _set_info();
-        return _max_delta; 
+    Quantity max_delta(){
+        if (!_contains_fp) return -1;
+        if (!_set_profile) {
+            _profile->set_fp(_footprint);
+            _set_profile = true;
+        }
+        return _profile->max_delta(); 
     }
     
     //@return minimum delta in the candle
-    Quantity min_delta() { 
-        if (!_is_set) _set_info();
-        return _min_delta; 
+    Quantity min_delta(){ 
+        if (!_contains_fp) return -1;
+        if (!_set_profile) {
+            _profile->set_fp(_footprint);
+            _set_profile = true;
+        }
+        return _profile->min_delta();
     }
     
     //@return total volume traded
-    Quantity volume() {return bid_vol()+ask_vol();}
-    
-    /*@return number of buying imbalance in the candlestick*/
-    size_t buy_imbalance(){
-        if (!_is_set) _set_info();
-        return _buy_imb;
+    Quantity volume(){
+        if (!_contains_fp) return -1;
+        if (!_set_profile) {
+            _profile->set_fp(_footprint);
+            _set_profile = true;
+        }
+        return bid_vol()+ask_vol();
     }
     
-    /*@return number of selling imbalance in the candlestick*/
-    size_t sell_imbalance(){
-        if (!_is_set) _set_info();
-        return _sell_imb;
+    /*@return map containing the footprint*/
+    std::map<Price, Level, std::greater<Price>> &footprint(){
+        return _footprint;
     }
 
-    /*@return map containing the footprint*/
-    const std::map<Price, Level, std::greater<Price>> &footprint() const {return _footprint;}
+    bool contains_footprint(){return _contains_fp;}
     
     /*Recalculates the value area using the percentage given.
     @param percentage percentage of the value area
     @note percentage should be in ratio e.g 0.7 instead of 70%*/
     void set_va(double percentage){
-        _value_area(percentage);
+        if (!_contains_fp) return ;
+        _profile->set_fp(_footprint, percentage);
+        _set_profile = true;
     }
     
     /*Prints the footprint of the candle stick. @note colors indicates imabalance. Green = buy imbalance, Red = sell imbalance*/
@@ -212,128 +260,28 @@ public:
         return out;
     }
     
-    friend std::istream &operator >>(std::istream &in, CandleStick &obj){
+    friend std::istream &operator>>(std::istream &in, CandleStick &obj){
         int level_size = 0;
         in >> obj._open >> obj._high >> obj._low >> obj._close >> obj._time_stamp >> level_size;
 
         if (in.eof()) return in;
+        Level temp;
         for (int i = 0; i < level_size; i++){
-            Level temp;
             in >> temp;
             obj._footprint[temp.price] = temp;            
         }
+        if (level_size > 0){
+            obj._contains_fp = true;
+            obj._profile = std::shared_ptr<Profile>(new Profile);
+        }
         return in;
     }
+
     
 private:
     Price _open, _high, _low, _close;
     time_t _time_stamp;
-
-    Quantity _ask_vol = 0, _bid_vol = 0, _max_vol = 0;
     std::map<Price, Level, std::greater<Price>> _footprint;
-    size_t _buy_trans = 0, _sell_trans = 0;
-    Quantity _max_delta = std::numeric_limits<Quantity>::lowest(), _min_delta = std::numeric_limits<Quantity>::max();
-
-    Price _cot; // COT = commitment of traders AKA POC price wtih the highest volume in the candlestick
-    Price _vah = -1, _val = -1, _vwap = -1; // VAH = value area high. VAL = value area low
-    size_t _buy_imb = 0, _sell_imb = 0; // number of buy and sell imbalance
-
-    Price _bcot; // Bids commitment of traders
-    Price _acot; // Asks commitment of traders
-    Quantity _max_ask = 0, _max_bid = 0;
-    bool _is_set = false;
-
-    /*Calculates and sets information such as max_delta, bid volume, vwap etc*/
-    void _set_info(){
-        double pv = 0; // pv = price * volume
-        for (const auto &it : _footprint){
-            _setter(it.second);
-            pv += it.first * (it.second.asks+it.second.bids);
-        }
-        _is_set = true;
-        _vwap = (volume() > 0) ? pv/volume() : 0;
-    }
-    
-    /*helper function for _set_info()*/
-    void _setter(const Level &temp){
-        Quantity del, vol;
-        del = temp.bids - temp.asks; //calculating delta
-        vol = temp.bids + temp.asks;
-        if (vol > _max_vol){
-            _max_vol = vol;
-            _cot = temp.price;
-        }
-        if (temp.bids > _max_bid){
-            _max_bid = temp.bids;
-            _bcot = temp.price;
-        }
-        if (temp.asks > _max_ask){
-            _max_ask = temp.asks;
-            _acot = temp.price;
-        }
-        if (del > _max_delta) _max_delta = del;
-        if (del < _min_delta) _min_delta = del;
-        _ask_vol += temp.asks;
-        _bid_vol += temp.bids;
-        if (temp.buy_imbalance(imbalance_level)) _buy_imb++;
-        if (temp.sell_imbalance(imbalance_level)) _sell_imb++;
-    }
-    
-    /*Finds the value area high and value area low of the footprint given percentage
-    @param percentage The percentage of total volume the the VAH and VAL should enclose
-    */
-    void _value_area(double perecentage){
-        if (percentage > 1.0) percentage = 1.0;
-        if (!_is_set) _set_info();
-        const auto &it = _footprint.find(_cot);
-        Quantity vol = it->second.asks + it->second.bids;
-        const Quantity total_vol = volume();
-        std::map<Price, Level, std::greater<Price>>::iterator up;
-        std::map<Price, Level, std::greater<Price>>::iterator down;
-        if (it == _footprint.begin()){ 
-            up = it;
-            down = std::next(it);
-        }
-        else if (std::next(it) == _footprint.end()){
-            down = it;
-            up = std::prev(it);
-        }
-        else {
-            up = std::prev(it);
-            down = std::next(it);
-        }
-        bool reached_top = (up == it);
-        bool reached_bottom = (down == it);
-        while (vol < perecentage*total_vol){
-            Quantity down_vol = 0, up_vol = 0;
-            
-            if (!reached_bottom) down_vol = down->second.asks + down->second.bids;
-            if (!reached_top) up_vol = up->second.bids + up->second.asks;
-
-            if (down_vol > up_vol){
-                vol += down_vol;
-                if (std::next(down) != _footprint.end()) down = std::next(down);
-                else reached_bottom = true;
-            }
-            else if (up_vol > down_vol){
-                vol += up_vol;
-                if (up != _footprint.begin()) up = std::prev(up);
-                else reached_top = true;
-            }
-            else {
-                vol += up_vol + down_vol;
-                if (std::next(down) != _footprint.end()) down = std::next(down);
-                else reached_bottom = true;
-                if (up != _footprint.begin()) up = std::prev(up);
-                else reached_top = true;
-            } 
-        }
-        if (!reached_top) up = std::next(up);
-        if (!reached_bottom) down = std::prev(down);
-        _vah = up->first;
-        _val = down->first;
-    }
-    
+    std::shared_ptr<Profile> _profile;
+    bool _set_profile = false, _contains_fp = false;
 };
-
-#endif
