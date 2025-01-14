@@ -61,6 +61,7 @@ struct Order{
         direction = _direction;
         order_type = _order_type;
         cancel_after = _cancel_after;
+        comment = std::move(_comment);
     }
     Price entry;
     Price sl; // stop loss
