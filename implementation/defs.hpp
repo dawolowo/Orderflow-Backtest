@@ -1,5 +1,4 @@
-#ifndef DEFS_HPP
-#define DEFS_HPP
+#pragma once
 
 #include <unordered_map>
 #include <iostream>
@@ -12,8 +11,6 @@
 
 /*Contain typedefs and commonly used libraries*/
 
-typedef double Price;
-typedef double Quantity;
+typedef float Price;
+typedef float Quantity;
 
-
-#endif
