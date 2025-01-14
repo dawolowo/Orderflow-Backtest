@@ -4,13 +4,14 @@ This file is contains necessary code to successfully backtest a strategy
 BackTest = a class that contains 'properties' to simulate live market and test a strategy
 */
 
-#ifndef BACKTEST_HPP
-#define BACKTEST_HPP
+#pragma once
 #include "defs.hpp"
 #include "candlestick.hpp"
 #include "chart.hpp"
 #include "order.hpp"
 #include <queue>
+#include <utility>
+#include <chrono>
 
 /*An object that backtest a strategy on a given data
 @param candles vector containing the candlesticks to be backtested
@@ -21,20 +22,17 @@ live testing.
 */
 class BackTest{
 public:
-    double risk = 1; //Risk per trade in percentage. @note Should not be negative
+    float risk = 0.01; //Risk per trade. It is not in percentage i.e 1% should be 0.01. @note Should not be negative
 
-    BackTest(std::vector<CandleStick> &candles, void (*strategy) (BackTest &)) : _candles(candles){
-        _strategy = strategy;
-    }
-
-    BackTest(Chart &chart, void (*strategy) (BackTest &)) : _candles(chart.candles()){
+    BackTest(Chart &chart, void (*strategy) (BackTest &), const char *strat_name = "") : _candles(_chart.candles()){
         _chart = chart;
         _strategy = strategy;
+        _strategy_name = strat_name;
     }
 
     /*Runs the backtest on the strategy*/
     void run(){
-        time_t start = time(0);
+        auto start = std::chrono::high_resolution_clock::now();
         _reset();
         for (; _index < _candles.size(); ++_index){
             _manage_trades();
@@ -43,7 +41,7 @@ public:
             _update_dd();
         }
         _run_analysis();
-        _time_taken = time(0)-start;
+        _time_taken = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::high_resolution_clock::now()-start);
     }
     
     // @return Index of the current candle during backtest
@@ -56,13 +54,13 @@ public:
     Chart &chart() {return _chart;}
     
     //@return Returns of the strategy @note Not in percentage
-    double returns() const {return _returns;}
+    float returns() const {return _returns;}
    
     //@return The accuracy of the strategy @note Not in percentage
-    double winrate() const {return ((double) (_short_wins+_long_wins))/_n_trades;}
+    float winrate() const {return ((float) (_short_wins+_long_wins))/_n_trades;}
     
     //@return The maximum drawdown @note Not in percentage
-    double max_dd() const {return _max_dd;}
+    float max_dd() const {return _max_dd;}
     
     //@return A const reference to the trades taken
     const std::vector<Trade> &trades() const {
@@ -95,14 +93,15 @@ public:
         std::ios cout_state(nullptr);
         cout_state.copyfmt(std::cout); // To reset the console later
         std::cout << std::setprecision(4);
-        std::cout << "winrate : " << ((_n_trades > 0 ? (double) (_short_wins+_long_wins)/_n_trades : 0) *100)<< "%\tnumber of trades : " 
+        std::cout << "strategy name: " << _strategy_name << '\n'
+        << "winrate : " << ((_n_trades > 0 ? (float) (_short_wins+_long_wins)/_n_trades : 0) *100)<< "%\tnumber of trades : " 
         << _n_trades << "\nmax loss in a row : " << _max_loss_in_a_row  << "\tmax win in a row : " << _max_win_in_a_row 
         <<"\nmax drawdown : " << _max_dd*100  << "%\tmax drawdown (duration) : " << _max_dd_duration << " candles"
         << "\nlongs : " << _longs << "\t\tshorts : " << _shorts 
-        << "\nlongs winrate : " << ((_longs > 0? ((double) _long_wins)/ _longs : 0)*100) << "%\tshorts winrate : " 
-        << (_shorts > 0 ? ((double) _short_wins)/ _shorts : 0) *100
-        << "%\nsignal rate : " << (_candles.size() > 0 ? ((double)_n_trades)/ _candles.size() : 0)*100 << "%\treturns : " 
-        << _returns*100 << "%\n" << "time taken : " << _time_taken << "s\tnumber of candles : " << _candles.size() << "\n";
+        << "\nlongs winrate : " << ((_longs > 0? ((float) _long_wins)/ _longs : 0)*100) << "%\tshorts winrate : " 
+        << (_shorts > 0 ? ((float) _short_wins)/ _shorts : 0) *100
+        << "%\nsignal rate : " << (_candles.size() > 0 ? ((float)_n_trades)/ _candles.size() : 0)*100 << "%\treturns : " 
+        << _returns*100 << "%\n" << "time taken : " << _time_taken.count() << " ms\tnumber of candles : " << _candles.size() << "\n";
         std::cout.copyfmt(cout_state);
     }
     
@@ -111,7 +110,7 @@ public:
         std::tm ti;
         time_t temp;
         for (auto &tr : _trades){
-            temp = tr.time_stamp/1000;
+            temp = tr.timestamp/1000;
             localtime_s(&ti, &temp);
             std::cout << ti.tm_year+1900 << "/" << ti.tm_mon+1 << "/" << ti.tm_mday << " " << ti.tm_hour << ":" << ti.tm_min << "\t" 
             << (tr.direction == Direction::buy? "buy" : "sell") << "\t" << (tr.success? "successful" : "not successful") << "\n";
@@ -123,7 +122,7 @@ public:
         std::tm ti;
         time_t temp;
         for (auto &tr : _trades){
-            temp = tr.time_stamp/1000;
+            temp = tr.timestamp/1000;
             localtime_s(&ti, &temp);
             std::cout << ti.tm_year+1900 << "/" << ti.tm_mon+1 << "/" << ti.tm_mday << " " << ti.tm_hour << ":" << ti.tm_min << "\t" 
             << (tr.direction == Direction::buy? "buy" : "sell") << "\t" << (tr.success? "successful" : "not successful") 
@@ -137,22 +136,24 @@ private:
     void (*_strategy) (BackTest &);
     size_t _index = 0;
     std::vector<Trade> _trades;
-    std::priority_queue<Order> _buy_limit; //Descending
+    std::priority_queue<Order, std::vector<Order>> _buy_limit; //Descending
     std::priority_queue<Order, std::vector<Order>, std::greater<Order>> _sell_limit; //Ascending
-    size_t _long_wins = 0, _short_wins = 0, _longs = 0, _shorts = 0, _n_trades = 0, _time_taken = 0;
+    size_t _long_wins = 0, _short_wins = 0, _longs = 0, _shorts = 0, _n_trades = 0;
     size_t _max_loss_in_a_row = 0, _max_win_in_a_row = 0;
+    std::chrono::milliseconds _time_taken;
+    std::string _strategy_name;
     
     /* total reward to risk ratio, negative rr means not profitable. you can multiply it by your risk per trade in dollars to get
      the profit/loss over the backtest.
     */
-    double _rr = 0; 
-    double _max_dd = 0; 
+    float _rr = 0; 
+    float _max_dd = 0; 
     Quantity _equity = 10'000;
     Quantity _max_equity = _equity, _initial_equity = _equity;
     
     /*Longest duration of a drawdown.@note It is unrelated to max drawdown*/
     long long _max_dd_duration = 0, _dd_duration = 0;
-    double _returns = 0;
+    float _returns = 0;
     
     /*Calculates useful information about the backtest*/
     void _run_analysis(){
@@ -212,7 +213,7 @@ private:
     
     // Execute an order
     void _fill(const Order &od){
-        _trades.push_back(Trade(od.entry, od.sl, od.tp, _candles[_index].time_stamp(), od.direction, od.comment));
+        _trades.emplace_back(od.entry, od.sl, od.tp, _candles[_index].timestamp(), od.direction, std::move(od.comment));
     }
     
     /*Manage orders. Responsible for cancelling and filling orders*/
@@ -235,8 +236,8 @@ private:
     
     //Update _equity 
     void _update_balance(Trade &tr){
-        double reward = tr.rr * risk;
-        _equity += _equity*reward/100;
+        float reward = tr.rr * risk;
+        _equity += _equity*reward;
     }
     
     //Update drawdowns
@@ -246,7 +247,7 @@ private:
             _dd_duration = 0;
         }
         else {
-            double dd = (_equity-_max_equity)/_equity;
+            float dd = (_equity-_max_equity)/_equity;
             if (++_dd_duration > _max_dd_duration)_max_dd_duration = _dd_duration;
             if (dd < _max_dd) _max_dd = dd;
         }
@@ -278,4 +279,3 @@ private:
     }
 };
 
-#endif
