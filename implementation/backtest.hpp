@@ -14,11 +14,8 @@ BackTest = a class that contains 'properties' to simulate live market and test a
 #include <chrono>
 
 /*An object that backtest a strategy on a given data
-@param candles vector containing the candlesticks to be backtested
 @param chart chart containing the candlesticks to be backtested
 @param strategy function containing strategy to be backtested
-@note Limit order trades might not be backtested correctly due to not using tick data. Nevertheless, result won't vary much from
-live testing.
 */
 class BackTest{
 public:
@@ -67,7 +64,9 @@ public:
         return _trades;
     }
 
-    /*Adds an order to the backtest engine*/
+    /*Adds an order to the backtest engine
+    @note every order should have a stop loss and take profit
+    */
     void add_order(Order &order){
         if (_check(order)){
             order.entry_id = _index;
@@ -80,7 +79,9 @@ public:
         }
     }
     
-    /*Adds an order to the backtest engine*/
+    /*Adds an order to the backtest engine
+    @note every order should have a stop loss and take profit
+    */
     void add_order(Order &&order){
         add_order(order);
     }
