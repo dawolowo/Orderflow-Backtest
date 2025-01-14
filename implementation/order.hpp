@@ -54,6 +54,14 @@ Order is unexecuted. Not to be confused with Trade, it becomes a Trade when exec
 @param comment additional information on order. For easy debugging
 */
 struct Order{
+
+    Order(Price _entry, Price _sl, Price _tp, Direction _direction, OrderType _order_type, size_t _cancel_after = SIZE_MAX,
+     std::string _comment = ""){
+        entry = _entry, sl = _sl, _tp = tp;
+        direction = _direction;
+        order_type = _order_type;
+        cancel_after = _cancel_after;
+    }
     Price entry;
     Price sl; // stop loss
     Price tp; // take profit
