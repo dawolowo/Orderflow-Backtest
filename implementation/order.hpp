@@ -4,8 +4,7 @@ Direction = an enum indicating direction of trade
 Trade = a structure that contains elements of a real life executed order
 */
 
-#ifndef ORDER_HPP
-#define ORDER_HPP
+#pragma once
 
 #include "defs.hpp"
 
@@ -24,7 +23,7 @@ enum OrderType {
 @param entry entry price
 @param sl stop loss
 @param tp take profit
-@param time_stamp time of entry
+@param timestamp time of entry
 @param direction direction of order, buy/sell
 @param comment additional information on order. For easy debugging
 */
@@ -32,7 +31,7 @@ struct Trade {
     Price entry; // entry price
     Price sl; // stop loss
     Price tp; // take profit
-    time_t time_stamp;
+    time_t timestamp;
     Direction direction;
     /*Additional information about the trade for easy debugging e.g values of variables when the trade was taken. @note It would be the
      same as Order::comment
@@ -40,7 +39,7 @@ struct Trade {
     std::string comment; 
     bool success = false;
     bool trade_completed = false;
-    double rr = 0; // reward-to-risk
+    float rr = 0; // reward-to-risk
 };
 
 /*Contains elements of an order.
@@ -71,6 +70,5 @@ struct Order{
         else if (l.entry > r.entry) return 1;
         else return 0;
     }
+    
 };
-
-#endif
