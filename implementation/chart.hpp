@@ -6,8 +6,7 @@ Swing = structure that contains information about swing points i.e swing high an
 
 */
 
-#ifndef CHART_HPP
-#define CHART_HPP
+#pragma once
 #include "candlestick.hpp"
 #include "defs.hpp"
 #include <filesystem>
@@ -29,12 +28,15 @@ struct Swing{
 
 /*Collection of CandleSticks
 @param candles vector of candles
+@note move is called on ```candle``` i.e the contents in ```candles``` are moved not copied to the chart object
 */
 class Chart{
 public:
     Chart() = default;
 
-    Chart(std::vector<CandleStick> &candles){_candles = candles; }
+    Chart(std::vector<CandleStick> &candles){
+        _candles = std::move(candles); 
+    }
 
     size_t size()const {return _candles.size();}
     
@@ -52,11 +54,13 @@ public:
         std::fstream file;
         file.open(file_path);
         if (!file) throw std::logic_error("cause = load() : File not opened. Incorrect file path or file does not exist\n");
+        
         while (1){
-            CandleStick temp;
-            file >> temp;
+            CandleStick c;
+            file >> c;
             if (file.eof()) break;
-            _candles.push_back(temp);
+
+            _candles.push_back(std::move(c));
         }
         file.close();
     }
@@ -73,7 +77,6 @@ public:
         else if (Source::high == source) pre = "high";
         else if (Source::low == source) pre = "low";
         std::string name = "sma_" + pre + "_" + std::to_string(length);
-        // const char *f = name.c_str();
         double sum = 0;
         size_t n = 1, rebalance = 0;
         for (size_t i = 0; i < _candles.size(); i++){
@@ -126,12 +129,16 @@ public:
     /*Adds a candle to the end of the chart
     @param c candle to be added
     */
-    void push_back(CandleStick &c){_candles.push_back(c);}
+    void push_back(CandleStick &c){
+        _candles.push_back(c);
+    }
 
     /*Adds a candle to the end of the chart
     @param c candle to be added
     */
-    void push_back(CandleStick &&c){_candles.push_back(c);}
+    void push_back(CandleStick &&c){
+        _candles.push_back(std::move(c));
+    }
 
     /*@brief selects an indicator
     @return Data of the indicator selected
@@ -160,5 +167,3 @@ private:
         return 0;
     }
 };
-
-#endif
