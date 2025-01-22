@@ -64,7 +64,7 @@ public:
     //@return low of the candle
     Price low() const {return _low;}
     
-    /*@return price with the highest volume*/
+    /*@return price with the highest volume i.e Commitment Of Traders*/
     Price cot(){
         if (!_contains_fp) return -1;
         if (!_set_profile) {
@@ -180,7 +180,7 @@ public:
         return bid_vol()+ask_vol();
     }
     
-    /*@return map containing the footprint*/
+    /*@return Read/write map containing the footprint*/
     std::map<Price, Level, std::greater<Price>> &footprint(){
         return _footprint;
     }
@@ -200,7 +200,7 @@ public:
     void print_fp() {
         for (auto &x : _footprint){
             if (x.first == cot())
-                std::cout << "\033[33m";
+                std::cout << "\033[33m"; //color code
             std::cout << x.first << " -> ";
             if (x.second.buy_imbalance(imbalance_level)) 
                 std::cout << "\033[92m" << x.second.bids << "\033[0m" << "\t\t"<< x.second.asks;
