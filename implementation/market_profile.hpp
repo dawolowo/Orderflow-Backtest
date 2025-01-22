@@ -5,28 +5,27 @@
 #include <iostream>
 
 /*
-An object representing a market profile. Contains api's for getting common information relating to market profile
+An object representing a market profile. Contains api's for getting common information relating to market profile e.g vwap, cot/poc
 @param x footprint of a candle or aggregated footprint of a range of candles
 @param va_percent percentage used to calculate value area. Defaults to 0.7 (70%)
 */
 class Profile {
-    std::map<Price, Level, std::greater<Price>> _footprint;
     Price _cot, _acot, _bcot, _vah, _val, _vwap;
     Quantity _max_vol = 0, _max_bid = 0, _max_ask = 0, _ask_vol = 0, _bid_vol = 0;
     Quantity _max_delta = std::numeric_limits<Quantity>::lowest(), _min_delta = std::numeric_limits<Quantity>::max();
     double _percent = 0.7;
 
     /*Calculates and sets information such as max_delta, bid volume, vwap etc*/
-    void _set_info(){
-        if (_footprint.empty())return;
+    void _set_info(const std::map<Price, Level, std::greater<Price>> &footprint){
+        if (footprint.empty())return;
         double pv = 0; // pv = price * volume
 
-        for (auto it : _footprint){
+        for (auto it : footprint){
             _setter(it.second);
             pv += it.first * (it.second.asks+it.second.bids);
         }
         _vwap = (volume() > 0) ? pv/volume() : 0;
-        _value_area(_percent);
+        _value_area(footprint, _percent);
     }
     
     /*helper function for _set_info()*/
@@ -52,18 +51,22 @@ class Profile {
         _bid_vol += temp.bids;
     }
 
-    void _value_area(double percentage){
+    /*Performs the computation to get the value area high and value area low
+    @param footprint footprint
+    @param percentage Percentage of volume within the value area
+    */
+    void _value_area(const std::map<Price, Level, std::greater<Price>> &footprint, double percentage){
         if (percentage > 1.0) percentage = 1.0;
-        const auto &it = _footprint.find(_cot);
+        auto it = footprint.find(_cot);
         Quantity vol = it->second.asks + it->second.bids;
         const Quantity total_vol = volume();
-        std::map<Price, Level, std::greater<Price>>::iterator up;
-        std::map<Price, Level, std::greater<Price>>::iterator down;
-        if (it == _footprint.begin()){ 
+        std::map<Price, Level, std::greater<Price>>::const_iterator up;
+        std::map<Price, Level, std::greater<Price>>::const_iterator down;
+        if (it == footprint.begin()){ 
             up = it;
             down = std::next(it);
         }
-        else if (std::next(it) == _footprint.end()){
+        else if (std::next(it) == footprint.end()){
             down = it;
             up = std::prev(it);
         }
@@ -81,19 +84,19 @@ class Profile {
 
             if (down_vol > up_vol){
                 vol += down_vol;
-                if (std::next(down) != _footprint.end()) down = std::next(down);
+                if (std::next(down) != footprint.end()) down = std::next(down);
                 else reached_bottom = true;
             }
             else if (up_vol > down_vol){
                 vol += up_vol;
-                if (up != _footprint.begin()) up = std::prev(up);
+                if (up != footprint.begin()) up = std::prev(up);
                 else reached_top = true;
             }
             else {
                 vol += up_vol + down_vol;
-                if (std::next(down) != _footprint.end()) down = std::next(down);
+                if (std::next(down) != footprint.end()) down = std::next(down);
                 else reached_bottom = true;
-                if (up != _footprint.begin()) up = std::prev(up);
+                if (up != footprint.begin()) up = std::prev(up);
                 else reached_top = true;
             } 
         }
@@ -108,19 +111,20 @@ public:
 
     Profile(std::map<Price, Level, std::greater<Price>> &x, double va_percent = 0.7){
         _percent = va_percent;
-        _footprint = std::move(x);
-        _set_info();
-        x = std::move(_footprint);
+        _set_info(x);
     }
 
+    /*@return price with the highest volume i.e Commitment Of Traders*/
     Price cot() const {
         return _cot;
     }
 
+    //@return Price with the highest ask volume
     Price ask_cot() const {
         return _acot;
     }
 
+    //@return Price with the highest bid volume
     Price bid_cot() const {
         return _bcot;
     }
@@ -156,11 +160,13 @@ public:
     Quantity max_delta() const {
         return _max_delta;
     }
-
-    void set_fp(std::map<Price, Level, std::greater<Price>> &x, double va_percent = 0.7){
+    
+    /*Computes the volume analysis on a give Profile/ footprint
+    @param x footprint to be analyzed
+    @param va_percent Percentage to calculated the value area. Defaults to 0.7 (70%)
+    */
+    void set_fp(const std::map<Price, Level, std::greater<Price>> &x, double va_percent = 0.7){
         _percent = va_percent;
-        _footprint = std::move(x);
-        _set_info();
-        x = std::move(_footprint);
+        _set_info(x);
     }
 };
