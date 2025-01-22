@@ -1,7 +1,7 @@
 /*
 This file contains code to aggregrate time and sales data specifically from binance.
-Aggregrate in this case means to restructure the data like a footprint chart
-Footprint = a candlestick that contains traded bid and ask volume at various price intervals
+Aggregrate in this case means to restructure the data (time and sales) to a footprint candle
+Footprint = a candlestick that contains traded bid and ask volume at price intervals
 */
 #pragma once
 
@@ -16,7 +16,7 @@ namespace levels{
 
     /*@brief Checks if two time are within the same time interval.
     @param x first time
-    @tparam y second time
+    @param y second time
     @param interval interval
     @note interval should be in seconds
     */
@@ -74,7 +74,7 @@ namespace levels{
         
         data::file_in.open_except(path, std::ios::in);
         size_t no_of_lines = 1;
-        // The next two lines are not needed if the data is binance spot. The first row is of binance futures data is column names
+        // The next two lines are not needed if the data is binance spot. The first row of binance futures data contains the column names
         if (!spot){
             std::string _;
             data::file_in >> _;
