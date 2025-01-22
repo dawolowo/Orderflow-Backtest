@@ -1,22 +1,29 @@
 #include "levels_agg.hpp"
 #include "chart.hpp"
 
+/*
+Tutorial: How to aggregate a binance time and sales data
+*/
+
 using namespace std;
 
 int main(){
     const char *file_path = "{path}.csv"; // location of time and sales data
     const char *store_path = "{path}.txt"; // where you want to store the aggregated data
 
+    // cols = number of columns
     size_t cols = 6; //colums = {"id", "price", "qty", "quote_qty", "time", "bim"} column names as gotten from binance
-    /*If you want to use with other data source make sure to change the indexes to correspond with the respective columns. i.e
+    /*If you want to use with other data source make sure to change the indexes to correspond with their respective columns.
+    i.e set the following to their respective indexes
     levels::price_id;
     levels::qty_id;
     levels::time_id;
     levels::is_buyer_maker_id;
-    Index starts from zero
+    
+    @note Index starts from zero
     */
    
-    int price_interval = 3; // difference in footprint price levels
+    Price price_interval = 3; // difference in footprint price levels
     int time_interval = 15 * 60; // 15 minute interval
 
     /*Aggregating and storing in a vector of candlestick*/
