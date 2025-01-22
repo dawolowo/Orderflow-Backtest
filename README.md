@@ -1,7 +1,7 @@
 # About
 This is a collection of tools I developed for myself and that can also be used by algorithmic traders with knowledge of c++ who wants to backtest trading strategies. It is capable of backtesting price action, indicator and orderflow based strategies. It can also be used to aggregrate time and sales data (SEE `levels_agg.hpp` file)
 
-By default it works with binance time and sales data gotten from: https://data.binance.vision but it can tweaked to work with data from other sources (check `loading_file.cpp` in `usage` folder to see how).
+By default it works with binance time and sales data gotten from: https://data.binance.vision but it can tweaked to work with data from other sources (check `loading_file.cpp` in `tutorial` folder to see how).
 
 ## Structure
 Details of files in ```implementation```:
