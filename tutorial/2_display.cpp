@@ -19,9 +19,10 @@ int main(){
     while (response != -1){
         cout << "index: ";
         cin >> response;
-        chart[response].print_fp();
-        // chart[response].print_bar();
-        // chart[response].print_delta();
+        if (response >= 0 && response < chart.size())
+            chart[response].print_fp();
+            // chart[response].print_bar();
+            // chart[response].print_delta();
     }
 
     return 0;
