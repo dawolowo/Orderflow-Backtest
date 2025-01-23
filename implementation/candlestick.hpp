@@ -1,162 +1,289 @@
 /*
-This file contains code to simulate a real life chart
-Chart = class that mimics a real life chart. i.e a collection of candlesticks
-Source = enum containing different points of application of an indicator
+This file contains necessary code that describes/ mimics a candlestick
+CandleStick = a replica object of a candlestick
 */
 
 #pragma once
-#include "candlestick.hpp"
+
 #include "defs.hpp"
-#include <filesystem>
-#include <cmath>
+#include "level_info.hpp"
+#include "market_profile.hpp"
+#include <utility>
+#include <memory>
+#include <limits>
 
-//Enum indicating the point of application of an indicator
-enum class Source{
-    open,
-    high,
-    low,
-    close
-};
-
-
-/*Collection of CandleSticks
-@param candles vector of candles
-@note move is called on ```candle``` i.e the contents in ```candles``` are moved not copied to the chart object
+/*Object storing information about the candlestick
+@param open open of the candle
+@param high high of the candle
+@param low low of the candle
+@param close close of the candle
+@param time open time of the candle
+@param footprint footprint of the candle
+@note The data in ```footprint``` is moved into the object. After the constructor call, ```footprint``` would be empty.
 */
-class Chart{
+class CandleStick{
 public:
-    Chart() = default;
-
-    Chart(std::vector<CandleStick> &candles){
-        _candles = std::move(candles); 
-    }
-
-    size_t size()const {return _candles.size();}
+    // minimum ratio between bid and ask to indicate imbalance
+    double imbalance_level = 3; 
+    // Percentage of volume used to calculate the value area. @note Should be in ratio e.g 0.7 instead of 70%
+    double percentage = 0.7;
     
-    //Returns true if chart is empty
-    bool empty(){return _candles.empty();}
+    CandleStick() = default;
+    
+    CandleStick(Price open, Price high, Price low, Price close, time_t time){
+        _open = open;
+        _high = high;
+        _low = low;
+        _close = close;
+        _time_stamp = time;
+    }
 
-    /*Loads the data stored in a file to Chart object
-
-    Data should contain the aggragrated data which is stored in .txt . To get this, data see agg_store()
-    @param file_path path to the .txt file containing the aggregated data
-    */
-    void load(const char *file_path){ 
-        std::filesystem::path filepath = file_path;
-        if (filepath.extension() != ".txt") throw std::logic_error("cause = load() : file name should end with .txt\n");
-        std::fstream file;
-        file.open(file_path);
-        if (!file) throw std::logic_error("cause = load() : File not opened. Incorrect file path or file does not exist\n");
-        
-        while (1){
-            CandleStick c;
-            file >> c;
-            if (file.eof()) break;
-
-            _candles.push_back(std::move(c));
+    CandleStick(Price open, Price high, Price low, Price close, time_t time, std::map<Price, Level, std::greater<Price>> &footprint){
+        _open = open;
+        _high = high;
+        _low = low;
+        _close = close;
+        _time_stamp = time;
+        _footprint = std::move(footprint);
+        _profile = std::shared_ptr<Profile>(new Profile);
+        _contains_fp = true;
+    }
+    
+    //@return opening time of the candle
+    time_t timestamp() const { return _time_stamp;}
+    
+    //@return open of the candle
+    Price open() const {return _open;}
+    
+    //@return close of the candle
+    Price close() const {return _close;}
+    
+    //@return high of the candle
+    Price high() const {return _high;}
+    
+    //@return low of the candle
+    Price low() const {return _low;}
+    
+    /*@return price with the highest volume i.e Commitment Of Traders*/
+    Price cot(){
+        if (!_contains_fp) return -1;
+        if (!_set_profile) {
+            _profile->set_fp(_footprint);
+            _set_profile = true;
         }
-        file.close();
+        return _profile->cot();
     }
-
-    /*Applies simple moving average indicator to the chart.
-    @param length period of the indicator e.g 14-period moving average
-    @param source where it should be applied to i.e (close, open, high, low) of the candle. Default is close.
-    @return Name of the indicator
-    */
-    std::string apply_sma(size_t length, Source source = Source::close){   
-        std::string pre;
-        if (Source::close == source) pre = "close";
-        else if (Source::open == source) pre = "open";
-        else if (Source::high == source) pre = "high";
-        else if (Source::low == source) pre = "low";
-        std::string name = "sma_" + pre + "_" + std::to_string(length);
-        double sum = 0;
-        size_t n = 1, rebalance = 0;
-        for (size_t i = 0; i < _candles.size(); i++){
-            Price x = _select(_candles[i], source);
-            sum += x;
-            if (i >= length){
-                sum -= _select(_candles[rebalance], source);
-                rebalance++;
-            }
-            _indicators[name].push_back(sum/n);
-            if (n < length) n++;
+    
+    //@return Price with the highest ask volume
+    Price ask_cot(){
+        if (!_contains_fp) return -1;
+        if (!_set_profile) {
+            _profile->set_fp(_footprint);
+            _set_profile = true;
         }
-        return name;
+        return _profile->ask_cot();
     }
-
-    /*Applies standard deviation indicator to the chart. 
-    @param length period of the indicator e.g 14-period
-    @param source where it should be applied to i.e (close, open, high, low) of the candle. Default is close.
-    @return Name of the indicator*/
-    std::string apply_std(size_t length, Source source = Source::close){
-        std::string sma = apply_sma(length, source);
-        std::string pre;
-        if (Source::close == source) pre = "close";
-        else if (Source::open == source) pre = "open";
-        else if (Source::high == source) pre = "high";
-        else if (Source::low == source) pre = "low";
-        std::string name = "sma_" + pre + "_" + std::to_string(length);
-        size_t n = 1, rebalance = 0;
-        for (size_t i = 0; i < size(); i++){
-            double temp = 0; // temp = ∑(x- x̄)²
-            for (size_t j = rebalance; j < n+rebalance; j++)
-                temp += pow(_select(_candles[j], source) - select_indicator(sma)[i], 2); // (x- x̄)²
-            _indicators[name].push_back(sqrt(temp/n));
-            if (n < length) n++;
-            else rebalance++;
+    
+    //@return Price with the highest bid volume
+    Price bid_cot(){
+        if (!_contains_fp) return -1;
+        if (!_set_profile) {
+            _profile->set_fp(_footprint);
+            _set_profile = true;
         }
-        return name;
+        return _profile->bid_cot();
+    }
+    
+    /*@return volume weighted price of the candlestick*/
+    Price vwap(){
+        if (!_contains_fp) return -1;
+        if (!_set_profile) {
+            _profile->set_fp(_footprint);
+            _set_profile = true;
+        }
+        return _profile->vwap();
+    }
+    
+    /*@return Value area high of the candlestick*/
+    Price vah(){
+        if (!_contains_fp) return -1;
+        if (!_set_profile) {
+            _profile->set_fp(_footprint);
+            _set_profile = true;
+        }
+        return _profile->vah();
+    }
+    
+    /*@return value area low of the candlestick*/
+    Price val(){
+        if (!_contains_fp) return -1;
+        if (!_set_profile) {
+            _profile->set_fp(_footprint);
+            _set_profile = true;
+        }
+        return _profile->val();
+    }
+    
+    //@return total ask volume
+    Quantity ask_vol(){
+        if (!_contains_fp) return -1;
+        if (!_set_profile) {
+            _profile->set_fp(_footprint);
+            _set_profile = true;
+        }
+        return _profile->ask_vol();
+    }
+    
+    //@return total bids volume
+    Quantity bid_vol(){
+        if (!_contains_fp) return -1;
+        if (!_set_profile) {
+            _profile->set_fp(_footprint);
+            _set_profile = true;
+        }
+        return _profile->bid_vol();
+    }
+    
+    //@return delta of the candle
+    Quantity delta(){ 
+        if (!_contains_fp) return -1;
+        return bid_vol()- ask_vol(); 
+    }
+    
+    //@return maximum delta in the candle
+    Quantity max_delta(){
+        if (!_contains_fp) return -1;
+        if (!_set_profile) {
+            _profile->set_fp(_footprint);
+            _set_profile = true;
+        }
+        return _profile->max_delta(); 
+    }
+    
+    //@return minimum delta in the candle
+    Quantity min_delta(){ 
+        if (!_contains_fp) return -1;
+        if (!_set_profile) {
+            _profile->set_fp(_footprint);
+            _set_profile = true;
+        }
+        return _profile->min_delta();
+    }
+    
+    //@return total volume traded
+    Quantity volume(){
+        if (!_contains_fp) return -1;
+        if (!_set_profile) {
+            _profile->set_fp(_footprint);
+            _set_profile = true;
+        }
+        return bid_vol()+ask_vol();
+    }
+    
+    /*@return Read/write map containing the footprint*/
+    std::map<Price, Level, std::greater<Price>> &footprint(){
+        return _footprint;
     }
 
-    /* Applies your custom indicator to the chart
-    @param name name of the indicator. It will be used to access your indicator
-    @param data data of the indicator
-    @note Ensure that look ahead bias is not being included in the data
-    */
-    void custom_indicator(const char *name, std::vector<Price> &data){        
-        if (data.size() != _candles.size()) throw std::logic_error("cause = custom_indicator() : Data of indicator not equal to length of data in chart\n");
-        _indicators[name] = data;
+    bool contains_footprint(){return _contains_fp;}
+    
+    /*Recalculates the value area using the percentage given.
+    @param percentage percentage of the value area
+    @note percentage should be in ratio e.g 0.7 instead of 70%*/
+    void set_va(double percentage){
+        if (!_contains_fp) return ;
+        _profile->set_fp(_footprint, percentage);
+        _set_profile = true;
+    }
+    
+    /*Prints the footprint of the candle stick. @note colors indicates imabalance. Green = buy imbalance, Red = sell imbalance*/
+    void print_fp() {
+        for (auto &x : _footprint){
+            if (x.first == cot())
+                std::cout << "\033[33m"; //color code
+            std::cout << x.first << " -> ";
+            if (x.second.buy_imbalance(imbalance_level)) 
+                std::cout << "\033[92m" << x.second.bids << "\033[0m" << "\t\t"<< x.second.asks;
+            else if (x.second.sell_imbalance(imbalance_level))
+                std::cout << x.second.bids << "\t\t" << "\033[91m"<< x.second.asks << "\033[0m";
+            else
+                std::cout << x.second.bids << "\t\t"<< x.second.asks ;
+            std::cout << "\033[0m" << "\n";
+        } 
     }
 
-    /*Adds a candle to the end of the chart
-    @param c candle to be added
-    */
-    void push_back(CandleStick &c){
-        _candles.push_back(c);
+    /*Prints the delta in the candlestick. @note Green = positive delta, Red = negative delta*/
+    void print_delta() {
+        for (auto &x : _footprint){
+            if (x.first == cot())
+                std::cout << "\033[33m";
+            std::cout << x.first << " -> " ;
+            if (x.second.bids > x.second.asks) 
+                std::cout << "\033[92m" << x.second.bids - x.second.asks << "\033[0m";
+            else if (x.second.asks > x.second.bids)
+                std::cout << "\033[91m"<< x.second.bids - x.second.asks << "\033[0m";
+            else
+                std::cout << x.second.bids - x.second.asks ;
+            std::cout << "\n";
+        }
     }
 
-    /*Adds a candle to the end of the chart
-    @param c candle to be added
-    */
-    void push_back(CandleStick &&c){
-        _candles.push_back(std::move(c));
+    /*Prints the volume bar and the associated volume @note Green = positive delta, Red = negative delta*/
+    void print_bar(){
+        int bars = _footprint.size() * 8;
+        const char *uni_char = "[]";
+
+        for (auto &x : _footprint){
+            if (x.first == cot())
+                std::cout << "\033[33m";
+            std::cout << x.first << " -> ";
+
+            for (int i = 0; i <= (x.second.asks + x.second.bids)*bars/volume(); i++)
+                std::cout <<  uni_char;
+            if (x.second.bids > x.second.asks)
+                std::cout << "\033[92m" ; //set color to green
+            else
+                std::cout << "\033[91m"; // set color to red
+            std::cout << " " << x.second.asks + x.second.bids  << "\033[0m" << "\n";
+            
+        }
     }
 
-    /*@brief selects an indicator
-    @return Data of the indicator selected
-    @param name name of the indicator
-    */
-    const std::vector<Price> &select_indicator(std::string name){
-        if (_indicators.find(name) == _indicators.end()) throw std::logic_error("cause = select_indicator() : Indicator does not exist\n");
-        return _indicators[name];
+    friend std::ostream &operator<<(std::ostream &out, CandleStick &obj){
+        out << obj._open << " " << obj._high << " " << obj._low << " " << obj._close << " " << obj._time_stamp << " " << obj._footprint.size();
+        for (auto &p : obj._footprint){
+            out << " " << p.second;
+        }
+        return out;
     }
 
-    /*@return vector containing candles*/
-    std::vector<CandleStick> &candles() {return _candles;}
+    friend std::ostream &operator<<(std::ostream &out, CandleStick &&obj){
+        out << obj;
+        return out;
+    }
+    
+    friend std::istream &operator>>(std::istream &in, CandleStick &obj){
+        int level_size = 0;
+        in >> obj._open >> obj._high >> obj._low >> obj._close >> obj._time_stamp >> level_size;
 
-    CandleStick &operator[](size_t id){return _candles[id];}
+        if (in.eof()) return in;
+        Level temp;
+        for (int i = 0; i < level_size; i++){
+            in >> temp;
+            obj._footprint[temp.price] = temp;            
+        }
+        if (level_size > 0){
+            obj._contains_fp = true;
+            obj._profile = std::shared_ptr<Profile>(new Profile);
+        }
+        return in;
+    }
 
+    
 private:
-    std::vector<CandleStick> _candles;
-    std::map<std::string, std::vector<Price>> _indicators;
-
-    /*@return Data corresponding to source*/
-    Price _select(const CandleStick &x, const Source &source){        
-        if (source == Source::open) return x.open();
-        else if (source == Source::high) return x.high();
-        else if (source == Source::low) return x.low();
-        else if (source == Source::close) return x.close();
-        return 0;
-    }
+    Price _open, _high, _low, _close;
+    time_t _time_stamp;
+    std::map<Price, Level, std::greater<Price>> _footprint;
+    std::shared_ptr<Profile> _profile;
+    bool _set_profile = false, _contains_fp = false;
 };
