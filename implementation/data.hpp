@@ -11,11 +11,11 @@
 namespace data{
     /*Class inheriting from std::fstream and incorporating RAII.
     */
-    class File : public std::fstream{
+    class FileStream : public std::fstream{
     public:
-        File() = default;
+        FileStream() = default;
 
-        ~File(){close();}
+        ~FileStream(){close();}
 
         /*
         Opens an external file, Raises an exception if not opened.
@@ -30,9 +30,7 @@ namespace data{
             if (!is_open()) throw std::logic_error("cause = File::open_except() : No such file\n");
         }
     };
-   
-    File file_in;
-    
+       
     //Limits the ram usage. The size is in bytes
     const size_t MAX_RAM_USE = 1000*1024*1024;
 
@@ -40,13 +38,12 @@ namespace data{
     @param ncol number of columns to read
     @param row vector that will be filled with the read row of the csv file. Empty vector should be passed
     */
-    inline void stream_file(const size_t &ncol, std::vector<std::string> &row){
+    inline void stream_file(const size_t &ncol, std::vector<std::string> &row, FileStream &file_in){
         char x;
         size_t n = 0;
         row[0] = "";
         while (file_in.get(x)){
             if (x == '\n') {
-                // end = true;
                 break;
             }
             if (x == ',' && n+1 < ncol){
@@ -57,14 +54,14 @@ namespace data{
         }
 
     }
-
-    void thread_stream(AtomicQueue<std::string> &buffer){
+    
+    void thread_stream(AtomicQueue<std::string> &buffer, FileStream &file){
         std::string line;
         char _;
-        while (!file_in.eof()){
-            file_in >> line;
-            file_in.get(_);
+        while (!file.eof()){
+            std::getline(file, line);
             buffer.push(line);
+            file.get(_);
             if (line.capacity()*buffer.size() > MAX_RAM_USE) std::this_thread::sleep_for(std::chrono::milliseconds(100));
         }
     }    
