@@ -51,7 +51,7 @@ namespace levels{
             
         }
 
-        inline void __write__(data::File &out, Price &open, Price &high, Price &low, Price &close, time_t &time, std::map<Price, Level, std::greater<Price>> &footprint){
+        inline void __write__(data::FileStream &out, Price &open, Price &high, Price &low, Price &close, time_t &time, std::map<Price, Level, std::greater<Price>> &footprint){
             out << open << ' ' << high << ' ' << low << ' ' << close << ' ' << time << ' ' << footprint.size();
             for (auto &p : footprint){
                 out << ' ' << p.second;
@@ -77,26 +77,27 @@ namespace levels{
         inline size_t __agg__(const char *path, size_t no_cols, const char *store_path, std::vector<CandleStick> &candles,
                 const Price price_level_interval, const int time_interval, const bool store, const bool spot){
             
-            data::file_in.open_except(path, std::ios::in);
+            data::FileStream file_in;
+            file_in.open_except(path, std::ios::in);
             size_t no_of_lines = 1;
             // The next two lines are not needed if the data is binance spot. The first row is of binance futures data is column names
             if (!spot){
                 std::string _;
-                data::file_in >> _;
+                file_in >> _;
                 char __;
-                data::file_in.get(__); // This line is important to get rid of the \n character. FIXED BUG
+                file_in.get(__); // This line is important to get rid of the \n character. FIXED BUG
             }        
 
             Price high, low, close, open, t_price;
             time_t timestamp, prev_time,curr_time ;
             std::map<Price, Level, std::greater<Price>> footprint;
-            data::File file_out;
+            data::FileStream file_out;
             if (store) file_out.open_except(store_path, std::ios::out);
             std::vector<std::string> row(no_cols);
             
             while (true){
-                data::stream_file(no_cols, row);
-                if (data::file_in.eof()){
+                data::stream_file(no_cols, row, file_in);
+                if (file_in.eof()){
                     if (store){
                         __write__(file_out, open, high, low, close, timestamp, footprint);
                     }
@@ -131,28 +132,28 @@ namespace levels{
         
         inline size_t __tagg__(const char *path, size_t no_cols, const char *store_path, std::vector<CandleStick> &candles,
                 const Price price_level_interval, const int time_interval, const bool store, const bool spot){
-            
-            data::file_in.open_except(path, std::ios::in);
+            data::FileStream file_in;
+            file_in.open_except(path, std::ios::in);
             size_t no_of_lines = 1;
             //  The first row is of binance futures data is column names so we it get rid of it
             if (!spot){
                 std::string _;
-                data::file_in >> _;
+                file_in >> _;
                 char __;
-                data::file_in.get(__); // This line is important to get rid of the \n character. FIXED BUG
+                file_in.get(__); // This line is important to get rid of the \n character. FIXED BUG
             }        
 
             Price high, low, close, open, t_price;
             time_t timestamp, prev_time, curr_time ;
             std::map<Price, Level, std::greater<Price>> footprint;
-            data::File file_out;
+            data::FileStream file_out;
             if (store) file_out.open_except(store_path, std::ios::out);
             std::vector<std::string> row(no_cols);
             AtomicQueue<std::string> buffer;        
-            std::thread worker(data::thread_stream, std::ref(buffer));
+            std::thread worker(data::thread_stream, std::ref(buffer), std::ref(file_in));
             
             while (true){
-                if (data::file_in.eof() && buffer.empty()){
+                if (file_in.eof() && buffer.empty()){
                     if (store){
                         __write__(file_out, open, high, low, close, timestamp, footprint);
                     }
