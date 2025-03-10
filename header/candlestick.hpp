@@ -278,7 +278,6 @@ public:
         }
         return in;
     }
-
     
 private:
     Price _open, _high, _low, _close;
