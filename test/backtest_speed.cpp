@@ -1,6 +1,5 @@
-#include "backtest.hpp"
+#include "header/backtest.hpp"
 #include <iostream>
-#include "levels_agg.hpp"
 #include <cmath>
 #include <stack>
 #include <format>
@@ -54,7 +53,7 @@ void ob(BackTest &self){
             CandleStick &entry = self.candles()[bull_id];
             double risk = entry.high()-entry.low();
             tm time;
-            time_t unix = entry.time_stamp()/1000;
+            time_t unix = entry.timestamp()/1000;
             localtime_s(&time, &unix);
             string comment = format("Trigger = {}/{}/{} {}:{}",time.tm_mday, time.tm_mon+1, time.tm_year+1900, time.tm_hour, time.tm_min);
             self.add_order(Order(entry.high(), entry.low(), entry.high()+risk, Direction::buy, OrderType::limit, 10, comment));
@@ -69,7 +68,7 @@ void ob(BackTest &self){
         if (x.low() < s_low.price){
             CandleStick &entry = self.candles()[bear_id];
             tm time;
-            time_t unix = entry.time_stamp()/1000;
+            time_t unix = entry.timestamp()/1000;
             localtime_s(&time, &unix);
             string comment = format("Trigger = {}/{}/{} {}:{}",time.tm_mday, time.tm_mon+1, time.tm_year+1900, time.tm_hour, time.tm_min);
             double risk = entry.high()-entry.low();
@@ -81,3 +80,4 @@ void ob(BackTest &self){
         }
     }
 }
+
