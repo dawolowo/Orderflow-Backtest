@@ -18,6 +18,35 @@ BackTest = a class that contains 'properties' to simulate live market and test a
 @param strategy function containing strategy to be backtested
 */
 class BackTest{
+
+    struct PerformanceMetric{
+        size_t long_wins; //Number of profitable longs/buys
+        size_t short_wins; //Number of profitable shorts/sells
+        size_t longs; //Number of longs/buys
+        size_t shorts; //Number of shorts/sells
+        size_t n_trades; //Total number of trades
+        size_t max_loss_in_a_row; //Maximum loss in a row
+        size_t max_win_in_a_row;
+        std::chrono::milliseconds time_taken; //Time taken for the backtest engine to complete the simulation
+
+        /*Total reward to risk ratio, negative rr means not profitable. You can multiply it by your risk per trade in dollars to get
+        the profit/loss over the backtest.
+        */
+        float risk_reward = 0;
+
+        float max_dd = 0; // Maximum drawdown
+        Quantity initial_equity = 10'000; //Starting equity. i.e equity at the start
+        Quantity equity = initial_equity; //Current equity
+        Quantity max_equity = initial_equity; //Peak equity during the entire simulation
+        
+        /*Longest duration of a drawdown. There could be multiple drawdown in a simulation, it measures the longest drawdown.
+         @note It is unrelated to max drawdown*/
+        long long max_dd_duration = 0; 
+        
+        long long dd_duration = 0; //Current drawdown duration. 0 if it is not in a drawdown
+        float returns = 0; //Current returns
+    };
+
 public:
     float risk = 0.01; //Risk per trade. It is not in percentage i.e 1% should be 0.01. @note Should not be negative
 
@@ -38,7 +67,7 @@ public:
             _update_dd();
         }
         _run_analysis();
-        _time_taken = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::high_resolution_clock::now()-start);
+        _metric.time_taken = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::high_resolution_clock::now()-start);
     }
     
     // @return Index of the current candle during backtest
@@ -51,13 +80,13 @@ public:
     Chart &chart() {return _chart;}
     
     //@return Returns of the strategy @note Not in percentage
-    float returns() const {return _returns;}
+    float returns() const {return _metric.returns;}
    
     //@return The accuracy of the strategy @note Not in percentage
-    float winrate() const {return ((float) (_short_wins+_long_wins))/_n_trades;}
+    float winrate() const {return ((float) (_metric.short_wins+_metric.long_wins))/_metric.n_trades;}
     
     //@return The maximum drawdown @note Not in percentage
-    float max_dd() const {return _max_dd;}
+    float max_dd() const {return _metric.max_dd;}
     
     //@return A const reference to the trades taken
     const std::vector<Trade> &trades() const {
@@ -70,7 +99,7 @@ public:
     void add_order(Order &order){
         if (_check(order)){
             order.entry_id = _index;
-            if (order.order_type == OrderType::mo){
+            if (order.order_type == OrderType::market_order){
                 order.entry = _candles[_index].close();
                 _fill(order);
             }
@@ -95,14 +124,16 @@ public:
         cout_state.copyfmt(std::cout); // To reset the console later
         std::cout << std::setprecision(4);
         std::cout << "strategy name: " << _strategy_name << '\n'
-        << "winrate : " << ((_n_trades > 0 ? (float) (_short_wins+_long_wins)/_n_trades : 0) *100)<< "%\tnumber of trades : " 
-        << _n_trades << "\nmax loss in a row : " << _max_loss_in_a_row  << "\tmax win in a row : " << _max_win_in_a_row 
-        <<"\nmax drawdown : " << _max_dd*100  << "%\tmax drawdown (duration) : " << _max_dd_duration << " candles"
-        << "\nlongs : " << _longs << "\t\tshorts : " << _shorts 
-        << "\nlongs winrate : " << ((_longs > 0? ((float) _long_wins)/ _longs : 0)*100) << "%\tshorts winrate : " 
-        << (_shorts > 0 ? ((float) _short_wins)/ _shorts : 0) *100
-        << "%\nsignal rate : " << (_candles.size() > 0 ? ((float)_n_trades)/ _candles.size() : 0)*100 << "%\treturns : " 
-        << _returns*100 << "%\n" << "time taken : " << _time_taken.count() << " ms\tnumber of candles : " << _candles.size() << "\n";
+        << "winrate : " << ((_metric.n_trades > 0 ? (float) (_metric.short_wins+_metric.long_wins)/_metric.n_trades : 0) *100)
+        << "%\tnumber of trades : " 
+        << _metric.n_trades << "\nmax loss in a row : " << _metric.max_loss_in_a_row  << "\tmax win in a row : " << _metric.max_win_in_a_row 
+        <<"\nmax drawdown : " << _metric.max_dd*100  << "%\tmax drawdown (duration) : " << _metric.max_dd_duration << " candles"
+        << "\nlongs : " << _metric.longs << "\t\tshorts : " << _metric.shorts 
+        << "\nlongs winrate : " << ((_metric.longs > 0? ((float) _metric.long_wins)/ _metric.longs : 0)*100) << "%\tshorts winrate : " 
+        << (_metric.shorts > 0 ? ((float) _metric.short_wins)/ _metric.shorts : 0) *100
+        << "%\nsignal rate : " << (_candles.size() > 0 ? ((float)_metric.n_trades)/ _candles.size() : 0)*100 << "%\treturns : " 
+        << _metric.returns*100 << "%\n" << "time taken : " << _metric.time_taken.count() << " ms\tnumber of candles : " << _candles.size()
+        << "\n";
         std::cout.copyfmt(cout_state);
     }
     
@@ -139,22 +170,9 @@ private:
     std::vector<Trade> _trades;
     std::priority_queue<Order, std::vector<Order>> _buy_limit; //Descending
     std::priority_queue<Order, std::vector<Order>, std::greater<Order>> _sell_limit; //Ascending
-    size_t _long_wins = 0, _short_wins = 0, _longs = 0, _shorts = 0, _n_trades = 0;
-    size_t _max_loss_in_a_row = 0, _max_win_in_a_row = 0;
-    std::chrono::milliseconds _time_taken;
+    PerformanceMetric _metric;
     std::string _strategy_name;
     
-    /* total reward to risk ratio, negative rr means not profitable. you can multiply it by your risk per trade in dollars to get
-     the profit/loss over the backtest.
-    */
-    float _rr = 0; 
-    float _max_dd = 0; 
-    Quantity _equity = 10'000;
-    Quantity _max_equity = _equity, _initial_equity = _equity;
-    
-    /*Longest duration of a drawdown.@note It is unrelated to max drawdown*/
-    long long _max_dd_duration = 0, _dd_duration = 0;
-    float _returns = 0;
     
     /*Calculates useful information about the backtest*/
     void _run_analysis(){
@@ -162,8 +180,8 @@ private:
         for (auto &tr : _trades){
             if (tr.trade_completed){
                 if (tr.success){
-                    if (tr.direction == Direction::sell) _short_wins++;
-                    else if (tr.direction == Direction::buy) _long_wins++;
+                    if (tr.direction == Direction::sell) _metric.short_wins++;
+                    else if (tr.direction == Direction::buy) _metric.long_wins++;
                     consecutive_loss = 0;
                     consecutive_win++;
                 }
@@ -171,16 +189,16 @@ private:
                     consecutive_win = 0;
                     consecutive_loss++;
                 }
-                if (tr.direction == Direction::sell) ++_shorts;
-                else _longs++;
+                if (tr.direction == Direction::sell) ++_metric.shorts;
+                else _metric.longs++;
                 
-                if (consecutive_loss > _max_loss_in_a_row) _max_loss_in_a_row = consecutive_loss;
-                if (consecutive_win > _max_win_in_a_row) _max_win_in_a_row = consecutive_win;
-                _rr += tr.rr;
-                ++_n_trades;
+                if (consecutive_loss > _metric.max_loss_in_a_row) _metric.max_loss_in_a_row = consecutive_loss;
+                if (consecutive_win > _metric.max_win_in_a_row) _metric.max_win_in_a_row = consecutive_win;
+                _metric.risk_reward= tr.rr;
+                ++_metric.n_trades;
             }
         }
-        _returns = (_equity-_initial_equity)/_initial_equity;
+        _metric.returns = (_metric.equity-_metric.initial_equity)/_metric.initial_equity;
     }
     
     /*Manage trades. Responsible for checking if trades is successful or not*/
@@ -238,19 +256,19 @@ private:
     //Update _equity 
     void _update_balance(Trade &tr){
         float reward = tr.rr * risk;
-        _equity += _equity*reward;
+        _metric.equity += _metric.equity*reward;
     }
     
     //Update drawdowns
     void _update_dd(){
-        if (_equity >= _max_equity){
-            _max_equity = _equity;
-            _dd_duration = 0;
+        if (_metric.equity >= _metric.max_equity){
+            _metric.max_equity = _metric.equity;
+            _metric.dd_duration = 0;
         }
         else {
-            float dd = (_equity-_max_equity)/_equity;
-            if (++_dd_duration > _max_dd_duration)_max_dd_duration = _dd_duration;
-            if (dd < _max_dd) _max_dd = dd;
+            float dd = (_metric.equity-_metric.max_equity)/_metric.equity;
+            if (++_metric.dd_duration > _metric.max_dd_duration)_metric.max_dd_duration = _metric.dd_duration;
+            if (dd < _metric.max_dd) _metric.max_dd = dd;
         }
     }
     
@@ -271,12 +289,7 @@ private:
         _trades = {};
         _buy_limit = {};
         _sell_limit = {};
-        _long_wins = 0, _short_wins = 0, _longs = 0, _shorts = 0, _n_trades = 0;
-        _max_loss_in_a_row = 0, _max_win_in_a_row = 0;
-        _rr = 0, _max_dd = 0; 
-        _equity = 10'000;
-        _max_equity = _initial_equity = _equity;
-        _returns = 0;
+        _metric = {};
     }
 };
 
