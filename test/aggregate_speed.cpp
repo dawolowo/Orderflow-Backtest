@@ -1,4 +1,4 @@
-#include "levels_agg.hpp"
+#include "aggregator.hpp"
 #include "chart.hpp"
 #include <filesystem>
 
@@ -12,8 +12,9 @@ int main(){
     size_t cols = 6;
     double file_size = filesystem::file_size(file_path)/(1024.0*1024);
     time_t start = time(0);
-    size_t line = levels::agg_store_thread(file_path, cols, store_path, price_interval, time_interval, true);
+    size_t line = aggregator::aggregate_store(file_path, handler::binance_handler, store_path, price_interval, time_interval, 0);
     size_t duration = time(0)-start;
     cout << "speed : " << file_size/duration << " MB/s";
     return 0;
 }
+
