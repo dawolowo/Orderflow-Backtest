@@ -1,5 +1,5 @@
-#include "aggregator.hpp"
-#include "chart.hpp"
+#include "header/aggregator.hpp"
+#include "header/chart.hpp"
 #include <filesystem>
 
 using namespace std;
