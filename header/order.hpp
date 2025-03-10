@@ -15,7 +15,7 @@ enum class Direction {
 };
 
 enum OrderType {
-    mo, // mo = market order. Fills at the close which is the market price.
+    market_order, //Fills at the close which is the market price.
     limit
 };
 
